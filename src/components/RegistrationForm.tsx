@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, FormEvent, ReactNode } from "react";
+import { useState, useMemo, FormEvent, ReactNode } from "react";
+import type {
+  ActivityWithSpots,
+  TrackWithSpots,
+  ActivitySeries,
+} from "@/types/database";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface FormData {
   legal_first_name: string;
@@ -20,6 +27,28 @@ interface FormData {
   emergency_relationship: string;
 }
 
+interface TimeSlot {
+  key: string;
+  day: string;
+  startTime: string;
+  endTime: string;
+  activities: ActivityWithSpots[];
+}
+
+interface Confirmation {
+  token: string;
+  displayName: string;
+}
+
+interface Props {
+  activities: ActivityWithSpots[];
+  tracks: TrackWithSpots[];
+  series: ActivitySeries[];
+  campName: string;
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
 const EMPTY_FORM: FormData = {
   legal_first_name: "",
   legal_last_name: "",
@@ -38,19 +67,76 @@ const EMPTY_FORM: FormData = {
   emergency_relationship: "",
 };
 
-interface Confirmation {
-  token: string;
-  displayName: string;
-}
+// ── Component ─────────────────────────────────────────────────────────────────
 
-export default function RegistrationForm() {
+export default function RegistrationForm({
+  activities,
+  tracks,
+  series,
+  campName,
+}: Props) {
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
+  // Explicit user slot picks: slotKey → activityId
+  const [userSelections, setUserSelections] = useState<Record<string, string>>(
+    {}
+  );
+  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<Confirmation | null>(null);
 
   const set = (field: keyof FormData, value: string | boolean) =>
     setForm((prev) => ({ ...prev, [field]: value }));
+
+  // Group activities into time slots, preserving server sort order
+  const timeSlots = useMemo<TimeSlot[]>(() => {
+    const map = new Map<string, TimeSlot>();
+    for (const a of activities) {
+      const key = `${a.day}|${a.start_time}|${a.end_time}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          day: a.day,
+          startTime: a.start_time,
+          endTime: a.end_time,
+          activities: [],
+        });
+      }
+      map.get(key)!.activities.push(a);
+    }
+    return Array.from(map.values());
+  }, [activities]);
+
+  // Add series auto-fills on top of explicit selections
+  const effectiveSelections = useMemo<Record<string, string>>(() => {
+    const result = { ...userSelections };
+    for (const activityId of Object.values(userSelections)) {
+      const picked = activities.find((a) => a.id === activityId);
+      if (!picked?.series_id) continue;
+      for (const partner of activities) {
+        if (partner.series_id !== picked.series_id || partner.id === activityId)
+          continue;
+        const key = `${partner.day}|${partner.start_time}|${partner.end_time}`;
+        if (!result[key]) result[key] = partner.id; // don't overwrite explicit picks
+      }
+    }
+    return result;
+  }, [userSelections, activities]);
+
+  function handleSlotClick(slotKey: string, activity: ActivityWithSpots) {
+    // Locked slots (auto-filled by series) cannot be changed directly
+    if (slotKey in effectiveSelections && !(slotKey in userSelections)) return;
+
+    setUserSelections((prev) => {
+      const next = { ...prev };
+      if (prev[slotKey] === activity.id) {
+        delete next[slotKey]; // clicking selected radio deselects it
+      } else {
+        next[slotKey] = activity.id;
+      }
+      return next;
+    });
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -60,7 +146,11 @@ export default function RegistrationForm() {
     const res = await fetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        ...form,
+        track_id: selectedTrackId,
+        activity_ids: Object.values(effectiveSelections),
+      }),
     });
 
     const data = await res.json();
@@ -77,6 +167,8 @@ export default function RegistrationForm() {
     });
     setSubmitting(false);
   }
+
+  // ── Confirmation screen ────────────────────────────────────────────────────
 
   if (confirmed) {
     const scheduleUrl = `${window.location.origin}/schedule?token=${confirmed.token}`;
@@ -102,12 +194,14 @@ export default function RegistrationForm() {
     );
   }
 
+  // ── Form ───────────────────────────────────────────────────────────────────
+
   return (
     <form
       onSubmit={handleSubmit}
       className="max-w-xl mx-auto py-12 px-4 space-y-10"
     >
-      <h1 className="text-3xl font-bold">Register for Camp</h1>
+      <h1 className="text-3xl font-bold">Register for {campName}</h1>
 
       {/* ── Camper Info ── */}
       <section className="space-y-4">
@@ -233,9 +327,7 @@ export default function RegistrationForm() {
           <input
             type="checkbox"
             checked={form.emergency_same_as_guardian}
-            onChange={(e) =>
-              set("emergency_same_as_guardian", e.target.checked)
-            }
+            onChange={(e) => set("emergency_same_as_guardian", e.target.checked)}
             className="w-4 h-4"
           />
           <span className="text-gray-700">Same as parent / guardian</span>
@@ -280,9 +372,7 @@ export default function RegistrationForm() {
                 required
                 placeholder="e.g. Parent, Grandparent, Aunt"
                 value={form.emergency_relationship}
-                onChange={(e) =>
-                  set("emergency_relationship", e.target.value)
-                }
+                onChange={(e) => set("emergency_relationship", e.target.value)}
                 className={input}
               />
             </Field>
@@ -290,14 +380,97 @@ export default function RegistrationForm() {
         )}
       </section>
 
-      {/* ── Workshop Selection (placeholder) ── */}
-      <section className="space-y-4">
+      {/* ── Track Selection ── */}
+      {tracks.length > 0 && (
+        <section className="space-y-4">
+          <h2 className="text-xl font-semibold border-b pb-2">
+            Morning Track
+          </h2>
+          <p className="text-sm text-gray-600">
+            Choose one track for your morning sessions.
+          </p>
+          <div className="space-y-2">
+            {tracks.map((track) => {
+              const isFull = track.spots_left <= 0;
+              const isSelected = selectedTrackId === track.id;
+              const isLow = track.spots_left > 0 && track.spots_left <= 3;
+              return (
+                <label
+                  key={track.id}
+                  className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
+                    isFull
+                      ? "opacity-50 cursor-not-allowed bg-gray-50"
+                      : isSelected
+                        ? "border-black bg-gray-50"
+                        : "border-gray-200 hover:border-gray-400"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="track"
+                    value={track.id}
+                    checked={isSelected}
+                    disabled={isFull}
+                    onChange={() => setSelectedTrackId(track.id)}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm">
+                      {track.emoji ? `${track.emoji} ` : ""}
+                      {track.name}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {formatTime(track.start_time)} –{" "}
+                      {formatTime(track.end_time)}
+                    </div>
+                    {track.description && (
+                      <div className="text-xs text-gray-600 mt-1">
+                        {track.description}
+                      </div>
+                    )}
+                    <div
+                      className={`text-xs mt-1 font-medium ${
+                        isFull
+                          ? "text-red-500"
+                          : isLow
+                            ? "text-amber-600"
+                            : "text-gray-400"
+                      }`}
+                    >
+                      {isFull
+                        ? "Full"
+                        : isLow
+                          ? `${track.spots_left} spot${track.spots_left === 1 ? "" : "s"} left!`
+                          : `${track.spots_left} spots left`}
+                    </div>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ── Workshop Selection ── */}
+      <section className="space-y-6">
         <h2 className="text-xl font-semibold border-b pb-2">
           Workshop Selection
         </h2>
-        <div className="rounded border-2 border-dashed border-gray-200 p-8 text-center text-gray-400 text-sm">
-          Workshop selection coming soon
-        </div>
+
+        {timeSlots.length === 0 ? (
+          <p className="text-sm text-gray-400">
+            No workshops have been added for this camp yet.
+          </p>
+        ) : (
+          <WorkshopSlots
+            timeSlots={timeSlots}
+            series={series}
+            userSelections={userSelections}
+            effectiveSelections={effectiveSelections}
+            activities={activities}
+            onSlotClick={handleSlotClick}
+          />
+        )}
       </section>
 
       {error && <p className="text-red-600 text-sm">{error}</p>}
@@ -313,7 +486,159 @@ export default function RegistrationForm() {
   );
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Workshop slots sub-component ──────────────────────────────────────────────
+
+function WorkshopSlots({
+  timeSlots,
+  series,
+  userSelections,
+  effectiveSelections,
+  activities,
+  onSlotClick,
+}: {
+  timeSlots: TimeSlot[];
+  series: ActivitySeries[];
+  userSelections: Record<string, string>;
+  effectiveSelections: Record<string, string>;
+  activities: ActivityWithSpots[];
+  onSlotClick: (key: string, activity: ActivityWithSpots) => void;
+}) {
+  // Group slots by day
+  const days = useMemo(() => {
+    const map = new Map<string, TimeSlot[]>();
+    for (const slot of timeSlots) {
+      if (!map.has(slot.day)) map.set(slot.day, []);
+      map.get(slot.day)!.push(slot);
+    }
+    return Array.from(map.entries()); // [day, slots[]]
+  }, [timeSlots]);
+
+  return (
+    <div className="space-y-8">
+      {days.map(([day, slots]) => (
+        <div key={day}>
+          <h3 className="font-semibold text-gray-800 mb-3">{formatDay(day)}</h3>
+          <div className="space-y-3">
+            {slots.map((slot) => {
+              const isLocked =
+                slot.key in effectiveSelections &&
+                !(slot.key in userSelections);
+              const lockedActivityId = effectiveSelections[slot.key];
+              const lockedActivity = isLocked
+                ? activities.find((a) => a.id === lockedActivityId)
+                : null;
+              const lockedSeriesName = lockedActivity?.series_id
+                ? series.find((s) => s.id === lockedActivity.series_id)?.name
+                : null;
+
+              return (
+                <div key={slot.key} className="border rounded-lg p-4">
+                  <p className="text-xs font-medium text-gray-500 mb-3 uppercase tracking-wide">
+                    {formatTime(slot.startTime)} – {formatTime(slot.endTime)}
+                  </p>
+
+                  {isLocked ? (
+                    <div className="flex items-start gap-2 bg-indigo-50 border border-indigo-100 rounded-md p-3">
+                      <span className="text-indigo-500 text-sm mt-0.5">✓</span>
+                      <div>
+                        <p className="text-sm font-medium text-indigo-900">
+                          {lockedActivity?.emoji
+                            ? `${lockedActivity.emoji} `
+                            : ""}
+                          {lockedActivity?.name}
+                        </p>
+                        {lockedSeriesName && (
+                          <p className="text-xs text-indigo-600 mt-0.5">
+                            Included with &ldquo;{lockedSeriesName}&rdquo; —
+                            deselect that workshop above to change
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {slot.activities.map((activity) => {
+                        const isFull = activity.spots_left <= 0;
+                        const isSelected =
+                          userSelections[slot.key] === activity.id;
+                        const isLow =
+                          activity.spots_left > 0 && activity.spots_left <= 3;
+                        const actSeries = activity.series_id
+                          ? series.find((s) => s.id === activity.series_id)
+                          : null;
+
+                        return (
+                          <label
+                            key={activity.id}
+                            className={`flex items-start gap-3 p-3 rounded-md border transition-colors ${
+                              isFull
+                                ? "opacity-50 cursor-not-allowed bg-gray-50"
+                                : isSelected
+                                  ? "border-black bg-gray-50 cursor-pointer"
+                                  : "border-gray-200 hover:border-gray-400 cursor-pointer"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={slot.key}
+                              value={activity.id}
+                              checked={isSelected}
+                              disabled={isFull}
+                              readOnly
+                              onClick={() =>
+                                !isFull && onSlotClick(slot.key, activity)
+                              }
+                              className="mt-1 cursor-pointer"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-medium">
+                                  {activity.emoji ? `${activity.emoji} ` : ""}
+                                  {activity.name}
+                                </span>
+                                {actSeries && (
+                                  <span className="text-xs text-gray-400 italic">
+                                    {actSeries.name}
+                                  </span>
+                                )}
+                              </div>
+                              {activity.description && (
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                  {activity.description}
+                                </p>
+                              )}
+                              <p
+                                className={`text-xs mt-1 font-medium ${
+                                  isFull
+                                    ? "text-red-500"
+                                    : isLow
+                                      ? "text-amber-600"
+                                      : "text-gray-400"
+                                }`}
+                              >
+                                {isFull
+                                  ? "Full"
+                                  : isLow
+                                    ? `${activity.spots_left} spot${activity.spots_left === 1 ? "" : "s"} left!`
+                                    : `${activity.spots_left} of ${activity.capacity} spots left`}
+                              </p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const input =
   "w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black";
@@ -339,4 +664,21 @@ function Field({
       {children}
     </div>
   );
+}
+
+function formatTime(time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 || 12;
+  return `${hour}:${m.toString().padStart(2, "0")} ${ampm}`;
+}
+
+function formatDay(day: string): string {
+  // Parse as local midnight to avoid timezone off-by-one
+  const [year, month, date] = day.split("-").map(Number);
+  return new Date(year, month - 1, date).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 }

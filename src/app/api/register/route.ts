@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase";
-
-// Swap this for the real camp ID once we move past testing
-const CAMP_ID = "6b79f15e-4058-413e-b068-e6a15c2b4638";
+import { CAMP_ID } from "@/lib/constants";
 
 const REQUIRED_FIELDS = [
   "legal_first_name",
@@ -47,7 +45,8 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient();
 
-  const { data, error } = await supabase
+  // Insert camper
+  const { data: camper, error: camperError } = await supabase
     .from("campers")
     .insert({
       camp_id: CAMP_ID,
@@ -74,13 +73,14 @@ export async function POST(req: NextRequest) {
       emergency_relationship: body.emergency_same_as_guardian
         ? null
         : body.emergency_relationship?.trim() || null,
+      track_id: body.track_id ?? null,
     })
     .select("id, token")
     .single();
 
-  if (error) {
-    console.error("Supabase insert error:", error);
-    if (error.code === "23505") {
+  if (camperError) {
+    console.error("Camper insert error:", camperError);
+    if (camperError.code === "23505") {
       return NextResponse.json(
         { error: "This email is already registered for this camp." },
         { status: 409 }
@@ -92,5 +92,32 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ camper_id: data.id, token: data.token });
+  // Insert activity registrations
+  const activityIds: string[] = Array.isArray(body.activity_ids)
+    ? body.activity_ids.filter((id: unknown) => typeof id === "string")
+    : [];
+
+  if (activityIds.length > 0) {
+    const { error: regError } = await supabase.from("registrations").insert(
+      activityIds.map((activityId) => ({
+        camper_id: camper.id,
+        activity_id: activityId,
+      }))
+    );
+
+    if (regError) {
+      console.error("Registration insert error:", regError);
+      // Compensate: remove the camper so the user can try again cleanly
+      await supabase.from("campers").delete().eq("id", camper.id);
+      return NextResponse.json(
+        {
+          error:
+            "One or more workshops filled up just now. Please go back and re-select.",
+        },
+        { status: 409 }
+      );
+    }
+  }
+
+  return NextResponse.json({ camper_id: camper.id, token: camper.token });
 }

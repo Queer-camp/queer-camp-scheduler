@@ -74,3 +74,13 @@ export interface Registration {
   activity_id: string;
   created_at: string;
 }
+
+// ── View types with computed fields ──────────────────────────────────────────
+
+export interface ActivityWithSpots extends Activity {
+  spots_left: number;
+}
+
+export interface TrackWithSpots extends Track {
+  spots_left: number;
+}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase";
+import { sendScheduleLink } from "@/lib/email";
 import { CAMP_ID } from "@/lib/constants";
 
 const REQUIRED_FIELDS = [
@@ -76,6 +77,14 @@ export async function POST(req: NextRequest) {
         { status: 409 }
       );
     }
+  }
+
+  const scheduleUrl = `${process.env.NEXT_PUBLIC_APP_URL}/schedule?token=${camper.token}`;
+  const displayName = `${body.chosen_first_name.trim()} ${body.chosen_last_name.trim()}`;
+  try {
+    await sendScheduleLink({ to: body.email.trim().toLowerCase(), displayName, scheduleUrl });
+  } catch (err) {
+    console.error("Failed to send registration confirmation email:", err);
   }
 
   return NextResponse.json({ camper_id: camper.id, token: camper.token });

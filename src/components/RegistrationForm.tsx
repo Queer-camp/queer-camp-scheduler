@@ -12,21 +12,13 @@ import { formatTime } from "@/lib/format";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface FormData {
+  chosen_first_name: string;
+  chosen_last_name: string;
+  legal_same_as_chosen: boolean;
   legal_first_name: string;
   legal_last_name: string;
-  chosen_name: string;
   pronouns: string;
   email: string;
-  guardian_first_name: string;
-  guardian_last_name: string;
-  guardian_email: string;
-  guardian_phone: string;
-  guardian_relationship: string;
-  emergency_same_as_guardian: boolean;
-  emergency_first_name: string;
-  emergency_last_name: string;
-  emergency_phone: string;
-  emergency_relationship: string;
 }
 
 interface Confirmation {
@@ -44,21 +36,13 @@ interface Props {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const EMPTY_FORM: FormData = {
+  chosen_first_name: "",
+  chosen_last_name: "",
+  legal_same_as_chosen: false,
   legal_first_name: "",
   legal_last_name: "",
-  chosen_name: "",
   pronouns: "",
   email: "",
-  guardian_first_name: "",
-  guardian_last_name: "",
-  guardian_email: "",
-  guardian_phone: "",
-  guardian_relationship: "",
-  emergency_same_as_guardian: false,
-  emergency_first_name: "",
-  emergency_last_name: "",
-  emergency_phone: "",
-  emergency_relationship: "",
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -70,7 +54,6 @@ export default function RegistrationForm({
   campName,
 }: Props) {
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
-  // Explicit user slot picks: slotKey → activityId
   const [userSelections, setUserSelections] = useState<Record<string, string>>(
     {}
   );
@@ -84,8 +67,7 @@ export default function RegistrationForm({
 
   const timeSlots = useMemo(() => buildTimeSlots(activities), [activities]);
 
-  // Add series auto-fills on top of explicit selections
-  const effectiveSelections = useMemo<Record<string, string>>(() => {
+  const effectiveSelections = useMemo(() => {
     const result = { ...userSelections };
     for (const activityId of Object.values(userSelections)) {
       const picked = activities.find((a) => a.id === activityId);
@@ -94,20 +76,18 @@ export default function RegistrationForm({
         if (partner.series_id !== picked.series_id || partner.id === activityId)
           continue;
         const key = `${partner.day}|${partner.start_time}|${partner.end_time}`;
-        if (!result[key]) result[key] = partner.id; // don't overwrite explicit picks
+        if (!result[key]) result[key] = partner.id;
       }
     }
     return result;
   }, [userSelections, activities]);
 
   function handleSlotClick(slotKey: string, activity: ActivityWithSpots) {
-    // Locked slots (auto-filled by series) cannot be changed directly
     if (slotKey in effectiveSelections && !(slotKey in userSelections)) return;
-
     setUserSelections((prev) => {
       const next = { ...prev };
       if (prev[slotKey] === activity.id) {
-        delete next[slotKey]; // clicking selected radio deselects it
+        delete next[slotKey];
       } else {
         next[slotKey] = activity.id;
       }
@@ -124,7 +104,16 @@ export default function RegistrationForm({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        ...form,
+        chosen_first_name: form.chosen_first_name.trim(),
+        chosen_last_name: form.chosen_last_name.trim(),
+        legal_first_name: form.legal_same_as_chosen
+          ? form.chosen_first_name.trim()
+          : form.legal_first_name.trim(),
+        legal_last_name: form.legal_same_as_chosen
+          ? form.chosen_last_name.trim()
+          : form.legal_last_name.trim(),
+        pronouns: form.pronouns.trim() || null,
+        email: form.email.trim().toLowerCase(),
         track_id: selectedTrackId,
         activity_ids: Object.values(effectiveSelections),
       }),
@@ -140,7 +129,7 @@ export default function RegistrationForm({
 
     setConfirmed({
       token: data.token,
-      displayName: form.chosen_name.trim() || form.legal_first_name,
+      displayName: `${form.chosen_first_name.trim()} ${form.chosen_last_name.trim()}`,
     });
     setSubmitting(false);
   }
@@ -180,39 +169,67 @@ export default function RegistrationForm({
     >
       <h1 className="text-3xl font-bold">Register for {campName}</h1>
 
-      {/* ── Camper Info ── */}
+      {/* ── Identity ── */}
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold border-b pb-2">Camper Info</h2>
+        <h2 className="text-xl font-semibold border-b pb-2">Your Info</h2>
 
+        {/* Chosen name — primary identity */}
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Legal first name" required>
+          <Field label="Chosen first name" required>
             <input
               type="text"
               required
-              value={form.legal_first_name}
-              onChange={(e) => set("legal_first_name", e.target.value)}
+              value={form.chosen_first_name}
+              onChange={(e) => set("chosen_first_name", e.target.value)}
               className={input}
             />
           </Field>
-          <Field label="Legal last name" required>
+          <Field label="Chosen last name" required>
             <input
               type="text"
               required
-              value={form.legal_last_name}
-              onChange={(e) => set("legal_last_name", e.target.value)}
+              value={form.chosen_last_name}
+              onChange={(e) => set("chosen_last_name", e.target.value)}
               className={input}
             />
           </Field>
         </div>
 
-        <Field label="Chosen name" hint="If different from legal name">
+        {/* Legal name */}
+        <label className="flex items-center gap-3 cursor-pointer">
           <input
-            type="text"
-            value={form.chosen_name}
-            onChange={(e) => set("chosen_name", e.target.value)}
-            className={input}
+            type="checkbox"
+            checked={form.legal_same_as_chosen}
+            onChange={(e) => set("legal_same_as_chosen", e.target.checked)}
+            className="w-4 h-4"
           />
-        </Field>
+          <span className="text-sm text-gray-700">
+            Legal name is the same as chosen name
+          </span>
+        </label>
+
+        {!form.legal_same_as_chosen && (
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Legal first name" required>
+              <input
+                type="text"
+                required
+                value={form.legal_first_name}
+                onChange={(e) => set("legal_first_name", e.target.value)}
+                className={input}
+              />
+            </Field>
+            <Field label="Legal last name" required>
+              <input
+                type="text"
+                required
+                value={form.legal_last_name}
+                onChange={(e) => set("legal_last_name", e.target.value)}
+                className={input}
+              />
+            </Field>
+          </div>
+        )}
 
         <Field label="Pronouns">
           <input
@@ -233,128 +250,6 @@ export default function RegistrationForm({
             className={input}
           />
         </Field>
-      </section>
-
-      {/* ── Parent / Guardian ── */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold border-b pb-2">
-          Parent / Guardian
-        </h2>
-
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="First name" required>
-            <input
-              type="text"
-              required
-              value={form.guardian_first_name}
-              onChange={(e) => set("guardian_first_name", e.target.value)}
-              className={input}
-            />
-          </Field>
-          <Field label="Last name" required>
-            <input
-              type="text"
-              required
-              value={form.guardian_last_name}
-              onChange={(e) => set("guardian_last_name", e.target.value)}
-              className={input}
-            />
-          </Field>
-        </div>
-
-        <Field label="Email" required>
-          <input
-            type="email"
-            required
-            value={form.guardian_email}
-            onChange={(e) => set("guardian_email", e.target.value)}
-            className={input}
-          />
-        </Field>
-
-        <Field label="Phone" required>
-          <input
-            type="tel"
-            required
-            value={form.guardian_phone}
-            onChange={(e) => set("guardian_phone", e.target.value)}
-            className={input}
-          />
-        </Field>
-
-        <Field label="Relationship to camper" required>
-          <input
-            type="text"
-            required
-            placeholder="e.g. Parent, Grandparent, Guardian"
-            value={form.guardian_relationship}
-            onChange={(e) => set("guardian_relationship", e.target.value)}
-            className={input}
-          />
-        </Field>
-      </section>
-
-      {/* ── Emergency Contact ── */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold border-b pb-2">
-          Emergency Contact
-        </h2>
-
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={form.emergency_same_as_guardian}
-            onChange={(e) => set("emergency_same_as_guardian", e.target.checked)}
-            className="w-4 h-4"
-          />
-          <span className="text-gray-700">Same as parent / guardian</span>
-        </label>
-
-        {!form.emergency_same_as_guardian && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="First name" required>
-                <input
-                  type="text"
-                  required
-                  value={form.emergency_first_name}
-                  onChange={(e) => set("emergency_first_name", e.target.value)}
-                  className={input}
-                />
-              </Field>
-              <Field label="Last name" required>
-                <input
-                  type="text"
-                  required
-                  value={form.emergency_last_name}
-                  onChange={(e) => set("emergency_last_name", e.target.value)}
-                  className={input}
-                />
-              </Field>
-            </div>
-
-            <Field label="Phone" required>
-              <input
-                type="tel"
-                required
-                value={form.emergency_phone}
-                onChange={(e) => set("emergency_phone", e.target.value)}
-                className={input}
-              />
-            </Field>
-
-            <Field label="Relationship to camper" required>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Parent, Grandparent, Aunt"
-                value={form.emergency_relationship}
-                onChange={(e) => set("emergency_relationship", e.target.value)}
-                className={input}
-              />
-            </Field>
-          </div>
-        )}
       </section>
 
       {/* ── Track Selection ── */}
@@ -433,7 +328,6 @@ export default function RegistrationForm({
         <h2 className="text-xl font-semibold border-b pb-2">
           Workshop Selection
         </h2>
-
         {timeSlots.length === 0 ? (
           <p className="text-sm text-gray-400">
             No workshops have been added for this camp yet.
@@ -442,9 +336,9 @@ export default function RegistrationForm({
           <WorkshopSlots
             timeSlots={timeSlots}
             series={series}
+            activities={activities}
             userSelections={userSelections}
             effectiveSelections={effectiveSelections}
-            activities={activities}
             onSlotClick={handleSlotClick}
           />
         )}
@@ -471,12 +365,10 @@ const input =
 function Field({
   label,
   required,
-  hint,
   children,
 }: {
   label: string;
   required?: boolean;
-  hint?: string;
   children: ReactNode;
 }) {
   return (
@@ -485,7 +377,6 @@ function Field({
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
-      {hint && <p className="text-xs text-gray-500">{hint}</p>}
       {children}
     </div>
   );

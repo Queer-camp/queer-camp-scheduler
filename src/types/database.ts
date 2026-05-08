@@ -1,21 +1,12 @@
 export interface Camper {
   id: string;
   camp_id: string;
+  chosen_first_name: string;
+  chosen_last_name: string;
   legal_first_name: string;
   legal_last_name: string;
-  chosen_name: string | null;
   pronouns: string | null;
   email: string;
-  guardian_first_name: string;
-  guardian_last_name: string;
-  guardian_email: string;
-  guardian_phone: string;
-  guardian_relationship: string;
-  emergency_same_as_guardian: boolean;
-  emergency_first_name: string | null;
-  emergency_last_name: string | null;
-  emergency_phone: string | null;
-  emergency_relationship: string | null;
   track_id: string | null;
   token: string;
   created_at: string;

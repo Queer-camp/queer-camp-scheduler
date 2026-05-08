@@ -14,14 +14,14 @@ export async function POST(req: NextRequest) {
 
   const { data: camper } = await supabase
     .from("campers")
-    .select("token, chosen_name, legal_first_name")
+    .select("token, chosen_first_name, chosen_last_name")
     .eq("email", email.trim().toLowerCase())
     .eq("camp_id", CAMP_ID)
     .single();
 
   if (camper) {
     const scheduleUrl = `${process.env.NEXT_PUBLIC_APP_URL}/schedule?token=${camper.token}`;
-    const displayName = camper.chosen_name || camper.legal_first_name;
+    const displayName = `${camper.chosen_first_name} ${camper.chosen_last_name}`;
 
     try {
       await sendScheduleLink({ to: email.trim(), displayName, scheduleUrl });

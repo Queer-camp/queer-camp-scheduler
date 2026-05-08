@@ -21,7 +21,7 @@ export default async function SchedulePage({
   // Look up camper by token
   const { data: camper } = await supabase
     .from("campers")
-    .select("id, camp_id, legal_first_name, chosen_name, pronouns, track_id")
+    .select("id, camp_id, chosen_first_name, chosen_last_name, pronouns, track_id")
     .eq("token", token)
     .single();
 

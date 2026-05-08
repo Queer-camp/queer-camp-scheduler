@@ -14,8 +14,8 @@ import { formatTime, formatDay } from "@/lib/format";
 
 interface Camper {
   id: string;
-  legal_first_name: string;
-  chosen_name: string | null;
+  chosen_first_name: string;
+  chosen_last_name: string;
   pronouns: string | null;
   track_id: string | null;
 }
@@ -55,7 +55,7 @@ function ViewMode({
   series,
   onEdit,
 }: Props & { onEdit: () => void }) {
-  const displayName = camper.chosen_name || camper.legal_first_name;
+  const displayName = `${camper.chosen_first_name} ${camper.chosen_last_name}`;
   const registeredIdSet = new Set(registeredActivityIds);
 
   const currentTrack = camper.track_id

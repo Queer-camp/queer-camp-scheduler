@@ -120,41 +120,54 @@ The org has a Google Workspace account at hello@queer.camp. We'll use SMTP throu
 
 ## Where We Are Now
 
-Database is fully deployed and ready. Resend and DNS verification are no longer needed (using Google Workspace SMTP instead). Setting up Claude Code on the home Mac to build the application layer.
+**Phase 1 MVP is built and running locally.** All core flows are implemented and pushed to GitHub. End-to-end QA and Vercel deployment are next.
+
+### Schema Note
+The campers table was simplified after Phase 0: guardian and emergency contact fields were removed (RegFox owns that data). `chosen_name` was replaced with `chosen_first_name` + `chosen_last_name` (both required). Migration is at `migrations/001_simplify_campers.sql`.
 
 ## What's Left to Do
 
-### Pre-Build (a few things still pending)
+### Immediate Next Session
 
-- [ ] Get SMTP credentials from David (host, port, username, app-specific password, SMTP relay status)
-- [ ] Set up Vercel account at vercel.com (sign in with queercamp GitHub)
-- [ ] Confirm with David: "Send Emails if late registration" meaning (still unanswered)
+- [ ] Thorough end-to-end QA:
+  - Register a test camper at `/register`
+  - Confirm token link works at `/schedule?token=`
+  - Test `/get-link` email delivery (SMTP is wired, credentials in .env.local)
+  - Test edit mode on schedule page
+  - Test "legal name same as chosen" checkbox behavior
+  - Test workshop series auto-fill logic
+  - Test capacity enforcement (fill a slot, verify others blocked)
+- [ ] Deploy to Vercel:
+  - Create Vercel account (sign in with Queer-camp GitHub org)
+  - Connect repo, set env vars (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, NEXT_PUBLIC_APP_URL)
+  - Set NEXT_PUBLIC_APP_URL to production domain
+  - Verify email links point to production URL
 
-### Phase 1: MVP Build
+### Phase 1: MVP Build ✓
 
-Built via Claude Code on home Mac.
-
-- [ ] Scaffold Next.js app: `npx create-next-app@latest queer-camp-scheduler` (TypeScript, Tailwind, App Router, src/)
-- [ ] Push to GitHub repo `queer-camp-scheduler` in the Queer-camp organization
-- [ ] Connect Next.js to Supabase (install supabase-js, configure env vars)
-- [ ] Set up Nodemailer with Google Workspace SMTP (env vars for credentials)
-- [ ] Build registration form:
-  - Camper personal info (legal name, chosen name, pronouns, email)
-  - Parent/guardian info
-  - Emergency contact (with "same as guardian" checkbox)
+- [x] Scaffold Next.js app (Next.js 16, TypeScript, Tailwind v4, Turbopack, App Router, src/)
+- [x] Push to GitHub repo `queer-camp-scheduler` in the Queer-camp organization
+- [x] Connect Next.js to Supabase (supabase-js, env vars, admin + public clients)
+- [x] Set up Nodemailer with Google Workspace SMTP
+- [x] Build registration form:
+  - Chosen name (first + last, required, primary identity)
+  - "Legal name same as chosen" checkbox — collapses legal fields, copies on submit
+  - Legal name (first + last, required, DB-only for RegFox cross-reference)
+  - Pronouns (optional), email (required)
   - Track selection (if tracks exist for the camp)
-  - Activity selection per time slot with linked activity handling
+  - Activity selection per time slot with linked series auto-fill
   - First-come-first-served capacity with "spots left" indicators
   - Confirmation screen showing personal magic link to bookmark
-- [ ] Build self-service magic link flow:
-  - "Already registered? Get your edit link" page
-  - Camper enters email, receives magic link via SMTP
-- [ ] Build schedule view:
-  - Token-based URL access
-  - Personalized schedule display by day
-  - Print-friendly version
-- [ ] Deploy to Vercel
-- [ ] Test end-to-end with real Supabase data
+- [x] Build self-service magic link flow (`/get-link`):
+  - Camper enters email, API looks up token, sends magic link via SMTP
+  - Always returns 200 (doesn't leak whether email is registered)
+- [x] Build schedule view (`/schedule?token=`):
+  - Token-based URL access, invalid token shows clear error
+  - Personalized schedule display by day (track + activities)
+  - Edit mode: same workshop picker pre-populated with current selections, delta-based save
+  - Print-friendly (action buttons hidden via `print:hidden`)
+- [ ] Deploy to Vercel ← next
+- [ ] End-to-end QA ← next
 
 ### Phase 2: Admin Portal
 
@@ -180,7 +193,6 @@ Built via Claude Code on home Mac.
 - [ ] **Message all campers** broadcast tool:
   - Compose subject and body (plain text or basic HTML)
   - Filter recipients (all campers, by track, by activity, individuals)
-  - Toggle for sending to camper / guardian / both
   - Preview before send
   - Confirmation step ("Send to N recipients?")
   - Log of what was sent and to whom
@@ -205,7 +217,6 @@ Built via Claude Code on home Mac.
 ## Pending Questions for David
 
 - What does "Send Emails if late registration" mean operationally?
-- SMTP credentials for hello@queer.camp (host, port, username, app password, relay status)
 
 ## Known Constraints & Notes
 
@@ -230,8 +241,8 @@ Built via Claude Code on home Mac.
 |---------|---------|--------|
 | GitHub Org | Queer-camp (under hello@queer.camp) | ✓ Created |
 | Supabase | hello@queer.camp via GitHub | ✓ Project provisioned, schema deployed |
-| Google Workspace SMTP | hello@queer.camp | ⏳ Need credentials from David |
-| Vercel | Not yet created | ⏳ Pending |
+| Google Workspace SMTP | hello@queer.camp | ✓ Credentials in .env.local, wired to Nodemailer |
+| Vercel | Not yet created | ⏳ Next session |
 
 ## Key Project URLs
 

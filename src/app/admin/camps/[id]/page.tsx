@@ -17,26 +17,70 @@ type TrackForm = typeof EMPTY_TRACK;
 type ActivityForm = typeof EMPTY_ACTIVITY;
 type SeriesForm = typeof EMPTY_SERIES;
 
+// ── Time picker (always 12h, works across all browsers/locales) ───────────────
+
+function to12h(time: string): { hour: number; minute: number; ampm: "AM" | "PM" } {
+  const [h, m] = time ? time.split(":").map(Number) : [9, 0];
+  return { hour: h % 12 || 12, minute: m, ampm: h >= 12 ? "PM" : "AM" };
+}
+
+function to24h(hour: number, minute: number, ampm: "AM" | "PM"): string {
+  const h = (hour % 12) + (ampm === "PM" ? 12 : 0);
+  return `${String(h).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function TimePicker({ value, onChange, required }: { value: string; onChange: (v: string) => void; required?: boolean }) {
+  const { hour, minute, ampm } = to12h(value);
+  const update = (h: number, m: number, ap: "AM" | "PM") => onChange(to24h(h, m, ap));
+  const cls = "border border-gray-300 rounded px-2 py-2 text-sm";
+  return (
+    <div className="flex items-center gap-1">
+      <select required={required && !value} value={hour} onChange={e => update(Number(e.target.value), minute, ampm)} className={cls}>
+        {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => <option key={h} value={h}>{h}</option>)}
+      </select>
+      <span className="text-gray-500">:</span>
+      <select value={minute} onChange={e => update(hour, Number(e.target.value), ampm)} className={cls}>
+        {Array.from({ length: 60 }, (_, i) => i).map(m => (
+          <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
+        ))}
+      </select>
+      <select value={ampm} onChange={e => update(hour, minute, e.target.value as "AM" | "PM")} className={cls}>
+        <option value="AM">AM</option>
+        <option value="PM">PM</option>
+      </select>
+    </div>
+  );
+}
+
+// ── Day picker (multi-select, stored as comma-separated string) ───────────────
+
+function parseDays(day: string): string[] {
+  return day ? day.split(",").map(d => d.trim()).filter(Boolean) : [];
+}
+
 function DayPicker({ value, onChange }: { value: string; onChange: (day: string) => void }) {
+  const selected = parseDays(value);
+  function toggle(day: string) {
+    const next = selected.includes(day) ? selected.filter(d => d !== day) : [...selected, day];
+    onChange(next.join(","));
+  }
   return (
     <div className="flex flex-wrap gap-1">
       {DAYS.map(day => (
-        <button
-          key={day}
-          type="button"
-          onClick={() => onChange(day)}
-          className={`px-2 py-1 rounded text-xs font-medium border ${
-            value === day
+        <button key={day} type="button" onClick={() => toggle(day)}
+          className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${
+            selected.includes(day)
               ? "bg-black text-white border-black"
               : "bg-white text-gray-700 border-gray-300 hover:border-gray-500"
-          }`}
-        >
+          }`}>
           {day.slice(0, 3)}
         </button>
       ))}
     </div>
   );
 }
+
+// ── Shared form field components ──────────────────────────────────────────────
 
 function TrackFormFields({ form, setForm }: { form: TrackForm; setForm: (f: TrackForm) => void }) {
   return (
@@ -53,13 +97,11 @@ function TrackFormFields({ form, setForm }: { form: TrackForm; setForm: (f: Trac
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">Start time</label>
-        <input required type="time" value={form.start_time} onChange={e => setForm({ ...form, start_time: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
+        <TimePicker value={form.start_time} onChange={v => setForm({ ...form, start_time: v })} required />
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">End time</label>
-        <input required type="time" value={form.end_time} onChange={e => setForm({ ...form, end_time: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
+        <TimePicker value={form.end_time} onChange={v => setForm({ ...form, end_time: v })} required />
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">Capacity</label>
@@ -89,19 +131,16 @@ function ActivityFormFields({ form, setForm, series }: { form: ActivityForm; set
           className="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
       </div>
       <div className="col-span-2">
-        <label className="block text-sm font-medium mb-1">Day</label>
+        <label className="block text-sm font-medium mb-1">Days</label>
         <DayPicker value={form.day} onChange={day => setForm({ ...form, day })} />
-        {!form.day && <input type="text" required className="sr-only" tabIndex={-1} />}
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">Start time</label>
-        <input required type="time" value={form.start_time} onChange={e => setForm({ ...form, start_time: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
+        <TimePicker value={form.start_time} onChange={v => setForm({ ...form, start_time: v })} required />
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">End time</label>
-        <input required type="time" value={form.end_time} onChange={e => setForm({ ...form, end_time: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
+        <TimePicker value={form.end_time} onChange={v => setForm({ ...form, end_time: v })} required />
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">Capacity</label>
@@ -151,6 +190,8 @@ function activityToForm(a: Activity): ActivityForm {
 function seriesToForm(s: ActivitySeries): SeriesForm {
   return { name: s.name, description: s.description ?? "" };
 }
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function CampDetailPage() {
   const { id: campId } = useParams<{ id: string }>();
@@ -222,6 +263,10 @@ export default function CampDetailPage() {
   const formCard = "mb-6 p-5 bg-white border border-gray-200 rounded-lg space-y-3";
   const card = "p-4 bg-white border border-gray-200 rounded-lg";
 
+  function formatDays(day: string) {
+    return parseDays(day).join(", ") || "—";
+  }
+
   return (
     <div>
       <div className="mb-6">
@@ -292,7 +337,11 @@ export default function CampDetailPage() {
           </div>
 
           {showActivityForm && (
-            <form className={formCard} onSubmit={e => { e.preventDefault(); if (!activityForm.day) { setError("Please select a day."); return; } handleCreate("/api/admin/activities", activityForm, () => { setActivityForm(EMPTY_ACTIVITY); setShowActivityForm(false); loadActivities(); }); }}>
+            <form className={formCard} onSubmit={e => {
+              e.preventDefault();
+              if (!activityForm.day) { setError("Please select at least one day."); return; }
+              handleCreate("/api/admin/activities", activityForm, () => { setActivityForm(EMPTY_ACTIVITY); setShowActivityForm(false); loadActivities(); });
+            }}>
               <ActivityFormFields form={activityForm} setForm={setActivityForm} series={series} />
               <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Creating…" : "Create activity"}</button>
             </form>
@@ -301,7 +350,11 @@ export default function CampDetailPage() {
           {activities.length === 0 ? <p className="text-sm text-gray-500">No activities yet.</p> : (
             <div className="space-y-2">
               {activities.map(a => editingActivity?.id === a.id ? (
-                <form key={a.id} className={formCard} onSubmit={e => { e.preventDefault(); if (!editActivityForm.day) { setError("Please select a day."); return; } handleSave(`/api/admin/activities/${a.id}`, editActivityForm, () => { setEditingActivity(null); loadActivities(); }); }}>
+                <form key={a.id} className={formCard} onSubmit={e => {
+                  e.preventDefault();
+                  if (!editActivityForm.day) { setError("Please select at least one day."); return; }
+                  handleSave(`/api/admin/activities/${a.id}`, editActivityForm, () => { setEditingActivity(null); loadActivities(); });
+                }}>
                   <ActivityFormFields form={editActivityForm} setForm={setEditActivityForm} series={series} />
                   <div className="flex gap-2">
                     <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Saving…" : "Save"}</button>
@@ -312,7 +365,7 @@ export default function CampDetailPage() {
                 <div key={a.id} className={`${card} flex items-start justify-between`}>
                   <div>
                     <p className="font-medium">{a.emoji ? `${a.emoji} ` : ""}{a.name}</p>
-                    <p className="text-sm text-gray-500">{a.day} · {formatTime(a.start_time)} – {formatTime(a.end_time)} · Capacity {a.capacity}</p>
+                    <p className="text-sm text-gray-500">{formatDays(a.day)} · {formatTime(a.start_time)} – {formatTime(a.end_time)} · Capacity {a.capacity}</p>
                     {a.series_id && <p className="text-sm text-gray-500">Series: {series.find(s => s.id === a.series_id)?.name ?? "—"}</p>}
                     {a.description && <p className="text-sm text-gray-500">{a.description}</p>}
                   </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { Track, Activity, ActivitySeries } from "@/types/database";
 import { formatTime } from "@/lib/format";
 
@@ -20,6 +20,7 @@ interface CampGridProps {
   activities: ActivityWithCount[];
   series: ActivitySeries[];
   availableDays: string[];
+  campStartDate: string;
   campId: string;
   onUpdate: () => void;
   onOpenRoster: (target: RosterTarget) => void;
@@ -27,10 +28,10 @@ interface CampGridProps {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const SLOT_HEIGHT = 48; // px per 30-min slot
-const GRID_START = 8 * 60; // 8:00 AM in minutes
-const GRID_END = 20 * 60;  // 8:00 PM in minutes
-const POPOVER_WIDTH = 320;
+const SLOT_HEIGHT = 48;        // px per 30-min slot
+const GRID_START = 0;          // midnight
+const GRID_END = 24 * 60;      // midnight next day
+const POPOVER_WIDTH = 340;
 
 const ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -42,7 +43,7 @@ function timeToMins(t: string): number {
 }
 
 function minsToTime(mins: number): string {
-  const h = Math.floor(mins / 60);
+  const h = Math.floor(mins / 60) % 24;
   const m = mins % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
@@ -59,12 +60,25 @@ function yToMins(y: number): number {
   return Math.round((GRID_START + (y / SLOT_HEIGHT) * 30) / 30) * 30;
 }
 
+function dateForDay(day: string, startDate: string): string | null {
+  if (!startDate) return null;
+  const DOW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const start = new Date(startDate + "T00:00:00");
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    if (DOW[d.getDay()] === day) {
+      return `${d.getMonth() + 1}/${d.getDate()}`;
+    }
+  }
+  return null;
+}
+
 const timeSlots: number[] = [];
 for (let m = GRID_START; m <= GRID_END; m += 30) timeSlots.push(m);
 
 const TOTAL_HEIGHT = timeToY(GRID_END);
 
-// Compute non-overlapping column positions for items in the same day+time
 function computeColumns(items: { id: string; start: number; end: number }[]): Record<string, { col: number; cols: number }> {
   const sorted = [...items].sort((a, b) => a.start - b.start);
   const result: Record<string, { col: number; cols: number }> = {};
@@ -73,13 +87,8 @@ function computeColumns(items: { id: string; start: number; end: number }[]): Re
   for (const item of sorted) {
     let placed = false;
     for (const group of groups) {
-      const lastInGroup = group[group.length - 1];
-      const last = sorted.find(i => i.id === lastInGroup)!;
-      if (last.end <= item.start) {
-        group.push(item.id);
-        placed = true;
-        break;
-      }
+      const last = sorted.find(i => i.id === group[group.length - 1])!;
+      if (last.end <= item.start) { group.push(item.id); placed = true; break; }
     }
     if (!placed) groups.push([item.id]);
   }
@@ -88,7 +97,6 @@ function computeColumns(items: { id: string; start: number; end: number }[]): Re
   groups.forEach((group, col) => {
     group.forEach(id => { result[id] = { col, cols: totalCols }; });
   });
-
   return result;
 }
 
@@ -108,7 +116,7 @@ function TimePicker({ value, onChange }: { value: string; onChange: (v: string) 
   const update = (h: number, m: number, ap: "AM" | "PM") => onChange(to24h(h, m, ap));
   const cls = "border border-gray-300 dark:border-gray-600 rounded px-1.5 py-1 text-xs dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-400";
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 flex-wrap">
       <select value={hour} onChange={e => update(+e.target.value, minute, ampm)} className={cls}>
         {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => <option key={h} value={h}>{h}</option>)}
       </select>
@@ -126,7 +134,7 @@ function TimePicker({ value, onChange }: { value: string; onChange: (v: string) 
   );
 }
 
-// ── DayPicker (mini) ──────────────────────────────────────────────────────────
+// ── DayPicker ─────────────────────────────────────────────────────────────────
 
 function MiniDayPicker({ value, onChange, availableDays }: { value: string; onChange: (v: string) => void; availableDays: string[] }) {
   const selected = parseDays(value);
@@ -158,9 +166,8 @@ function MiniDayPicker({ value, onChange, availableDays }: { value: string; onCh
 
 function Popover({ x, y, onClose, children }: { x: number; y: number; onClose: () => void; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
-
-  // Adjust position to stay on screen
   const [pos, setPos] = useState({ left: x, top: y });
+
   useEffect(() => {
     if (!ref.current) return;
     const { width, height } = ref.current.getBoundingClientRect();
@@ -175,20 +182,14 @@ function Popover({ x, y, onClose, children }: { x: number; y: number; onClose: (
     setPos({ left, top });
   }, [x, y]);
 
-  // Close on outside click
   useEffect(() => {
     function onDown(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     }
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [onClose]);
-
-  // Close on Escape
-  useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
   }, [onClose]);
 
   return (
@@ -199,18 +200,12 @@ function Popover({ x, y, onClose, children }: { x: number; y: number; onClose: (
   );
 }
 
-// ── Field helpers ─────────────────────────────────────────────────────────────
+// ── Shared field styles ───────────────────────────────────────────────────────
 
 const inputCls = "w-full border border-gray-300 dark:border-gray-600 rounded px-2.5 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-400";
 const labelCls = "block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5";
 
 // ── Create Popover ────────────────────────────────────────────────────────────
-
-const EMPTY_CREATE = {
-  itemType: "activity" as "track" | "activity",
-  name: "", emoji: "", location: "", description: "",
-  day: "", start_time: "09:00", end_time: "10:00", capacity: "15", series_id: "",
-};
 
 function CreatePopover({
   x, y, prefillStart, prefillEnd, prefillDay,
@@ -221,15 +216,17 @@ function CreatePopover({
   onClose: () => void; onCreated: () => void;
 }) {
   const [form, setForm] = useState({
-    ...EMPTY_CREATE,
-    start_time: prefillStart,
-    end_time: prefillEnd,
-    day: prefillDay ?? "",
+    itemType: "activity" as "track" | "activity",
+    name: "", emoji: "", location: "", description: "",
+    day: prefillDay ?? "", start_time: prefillStart, end_time: prefillEnd,
+    capacity: "15", series_id: "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   useEffect(() => { nameRef.current?.focus(); }, []);
+
+  const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -246,12 +243,9 @@ function CreatePopover({
     setSaving(false);
   }
 
-  const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
-
   return (
     <Popover x={x} y={y} onClose={onClose}>
       <form onSubmit={submit}>
-        {/* Header */}
         <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center justify-between mb-3">
             <div className="flex gap-1 p-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg">
@@ -264,9 +258,8 @@ function CreatePopover({
                 </button>
               ))}
             </div>
-            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none">✕</button>
+            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none ml-2">✕</button>
           </div>
-
           <div className="flex gap-2">
             <input value={form.emoji} onChange={e => set("emoji", e.target.value)} placeholder="✦"
               className="w-12 text-center border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-400" />
@@ -276,7 +269,6 @@ function CreatePopover({
           </div>
         </div>
 
-        {/* Fields */}
         <div className="px-4 py-3 space-y-3">
           <div>
             <label className={labelCls}>Location</label>
@@ -290,15 +282,13 @@ function CreatePopover({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className={labelCls}>Start</label>
-              <TimePicker value={form.start_time} onChange={v => set("start_time", v)} />
-            </div>
-            <div>
-              <label className={labelCls}>End</label>
-              <TimePicker value={form.end_time} onChange={v => set("end_time", v)} />
-            </div>
+          <div>
+            <label className={labelCls}>Start time</label>
+            <TimePicker value={form.start_time} onChange={v => set("start_time", v)} />
+          </div>
+          <div>
+            <label className={labelCls}>End time</label>
+            <TimePicker value={form.end_time} onChange={v => set("end_time", v)} />
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -326,7 +316,6 @@ function CreatePopover({
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
         </div>
 
-        {/* Footer */}
         <div className="px-4 pb-4 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">Cancel</button>
           <button type="submit" disabled={saving}
@@ -348,19 +337,14 @@ function TrackPopover({
   onClose: () => void; onUpdate: () => void; onOpenRoster: (t: RosterTarget) => void;
 }) {
   const [form, setForm] = useState({
-    name: track.name,
-    emoji: track.emoji ?? "",
-    location: track.location ?? "",
-    description: track.description ?? "",
-    start_time: track.start_time,
-    end_time: track.end_time,
-    capacity: String(track.capacity),
+    name: track.name, emoji: track.emoji ?? "", location: track.location ?? "",
+    description: track.description ?? "", start_time: track.start_time,
+    end_time: track.end_time, capacity: String(track.capacity),
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pct = Math.min(track.enrolled / track.capacity, 1);
   const barColor = pct >= 1 ? "bg-red-500" : pct >= 0.8 ? "bg-yellow-500" : "bg-green-500";
-
   const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
 
   async function save(e: React.FormEvent) {
@@ -384,18 +368,17 @@ function TrackPopover({
   return (
     <Popover x={x} y={y} onClose={onClose}>
       <form onSubmit={save}>
-        {/* Header */}
         <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">Track</span>
             <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none">✕</button>
           </div>
           <div className="flex gap-2 mb-2">
             <input value={form.emoji} onChange={e => set("emoji", e.target.value)} placeholder="✦"
               className="w-12 text-center border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-400" />
-            <input required value={form.name} onChange={e => set("name", e.target.value)} className={inputCls} />
+            <input required value={form.name} onChange={e => set("name", e.target.value)}
+              className="flex-1 border border-gray-300 dark:border-gray-600 rounded px-2.5 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-400" />
           </div>
-          {/* Capacity bar */}
           <div className="flex items-center gap-2">
             <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${pct * 100}%` }} />
@@ -404,21 +387,18 @@ function TrackPopover({
           </div>
         </div>
 
-        {/* Fields */}
         <div className="px-4 py-3 space-y-3">
           <div>
             <label className={labelCls}>Location</label>
             <input value={form.location} onChange={e => set("location", e.target.value)} placeholder="Room, building…" className={inputCls} />
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className={labelCls}>Start</label>
-              <TimePicker value={form.start_time} onChange={v => set("start_time", v)} />
-            </div>
-            <div>
-              <label className={labelCls}>End</label>
-              <TimePicker value={form.end_time} onChange={v => set("end_time", v)} />
-            </div>
+          <div>
+            <label className={labelCls}>Start time</label>
+            <TimePicker value={form.start_time} onChange={v => set("start_time", v)} />
+          </div>
+          <div>
+            <label className={labelCls}>End time</label>
+            <TimePicker value={form.end_time} onChange={v => set("end_time", v)} />
           </div>
           <div>
             <label className={labelCls}>Capacity</label>
@@ -431,7 +411,6 @@ function TrackPopover({
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
         </div>
 
-        {/* Footer */}
         <div className="px-4 pb-4 flex items-center justify-between">
           <div className="flex gap-3">
             <button type="button" onClick={() => { onOpenRoster({ type: "track", id: track.id, name: track.name, capacity: track.capacity }); onClose(); }}
@@ -458,21 +437,15 @@ function ActivityPopover({
   onClose: () => void; onUpdate: () => void; onOpenRoster: (t: RosterTarget) => void;
 }) {
   const [form, setForm] = useState({
-    name: activity.name,
-    emoji: activity.emoji ?? "",
-    location: activity.location ?? "",
-    description: activity.description ?? "",
-    day: activity.day,
-    start_time: activity.start_time,
-    end_time: activity.end_time,
-    capacity: String(activity.capacity),
-    series_id: activity.series_id ?? "",
+    name: activity.name, emoji: activity.emoji ?? "", location: activity.location ?? "",
+    description: activity.description ?? "", day: activity.day,
+    start_time: activity.start_time, end_time: activity.end_time,
+    capacity: String(activity.capacity), series_id: activity.series_id ?? "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pct = Math.min(activity.enrolled / activity.capacity, 1);
   const barColor = pct >= 1 ? "bg-red-500" : pct >= 0.8 ? "bg-yellow-500" : "bg-green-500";
-
   const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
 
   async function save(e: React.FormEvent) {
@@ -497,18 +470,17 @@ function ActivityPopover({
   return (
     <Popover x={x} y={y} onClose={onClose}>
       <form onSubmit={save}>
-        {/* Header */}
         <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-purple-600 dark:text-purple-400">Activity</span>
             <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none">✕</button>
           </div>
           <div className="flex gap-2 mb-2">
             <input value={form.emoji} onChange={e => set("emoji", e.target.value)} placeholder="✦"
               className="w-12 text-center border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-400" />
-            <input required value={form.name} onChange={e => set("name", e.target.value)} className={inputCls} />
+            <input required value={form.name} onChange={e => set("name", e.target.value)}
+              className="flex-1 border border-gray-300 dark:border-gray-600 rounded px-2.5 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-400" />
           </div>
-          {/* Capacity bar */}
           <div className="flex items-center gap-2">
             <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${pct * 100}%` }} />
@@ -517,7 +489,6 @@ function ActivityPopover({
           </div>
         </div>
 
-        {/* Fields */}
         <div className="px-4 py-3 space-y-3">
           <div>
             <label className={labelCls}>Location</label>
@@ -527,15 +498,13 @@ function ActivityPopover({
             <label className={labelCls}>Days</label>
             <MiniDayPicker value={form.day} onChange={v => set("day", v)} availableDays={availableDays} />
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className={labelCls}>Start</label>
-              <TimePicker value={form.start_time} onChange={v => set("start_time", v)} />
-            </div>
-            <div>
-              <label className={labelCls}>End</label>
-              <TimePicker value={form.end_time} onChange={v => set("end_time", v)} />
-            </div>
+          <div>
+            <label className={labelCls}>Start time</label>
+            <TimePicker value={form.start_time} onChange={v => set("start_time", v)} />
+          </div>
+          <div>
+            <label className={labelCls}>End time</label>
+            <TimePicker value={form.end_time} onChange={v => set("end_time", v)} />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -560,7 +529,6 @@ function ActivityPopover({
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
         </div>
 
-        {/* Footer */}
         <div className="px-4 pb-4 flex items-center justify-between">
           <div className="flex gap-3">
             <button type="button" onClick={() => { onOpenRoster({ type: "activity", id: activity.id, name: activity.name, capacity: activity.capacity }); onClose(); }}
@@ -577,39 +545,65 @@ function ActivityPopover({
   );
 }
 
-// ── Main Grid Component ───────────────────────────────────────────────────────
+// ── Tracks header band ────────────────────────────────────────────────────────
 
-export function CampGrid({ tracks, activities, series, availableDays, campId, onUpdate, onOpenRoster }: CampGridProps) {
+function TracksBand({ tracks, onClickTrack }: {
+  tracks: TrackWithCount[];
+  onClickTrack: (e: React.MouseEvent, track: TrackWithCount) => void;
+}) {
+  if (tracks.length === 0) return null;
+  return (
+    <div className="border-b border-gray-200 dark:border-gray-700 bg-blue-50/50 dark:bg-blue-950/20 px-3 py-2 space-y-1.5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400 px-1 mb-1">Tracks</p>
+      {tracks.map(track => {
+        const pct = Math.min(track.enrolled / track.capacity, 1);
+        const barColor = pct >= 1 ? "bg-red-500" : pct >= 0.8 ? "bg-yellow-500" : "bg-green-500";
+        return (
+          <button key={track.id} type="button"
+            onClick={e => onClickTrack(e, track)}
+            className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg bg-white dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/50 transition-colors">
+            {track.emoji && <span className="text-base shrink-0">{track.emoji}</span>}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="font-medium text-sm text-blue-900 dark:text-blue-100">{track.name}</span>
+                <span className="text-xs text-blue-500 dark:text-blue-400">{formatTime(track.start_time)} – {formatTime(track.end_time)}</span>
+                {track.location && <span className="text-xs text-blue-500 dark:text-blue-400">📍 {track.location}</span>}
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="w-24 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div className={`h-full ${barColor} rounded-full`} style={{ width: `${pct * 100}%` }} />
+                </div>
+                <span className="text-xs text-blue-500 dark:text-blue-400">{track.enrolled}/{track.capacity}</span>
+              </div>
+            </div>
+            <span className="text-xs text-blue-400 dark:text-blue-500 shrink-0">Edit →</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Main Grid ─────────────────────────────────────────────────────────────────
+
+export function CampGrid({ tracks, activities, series, availableDays, campStartDate, campId, onUpdate, onOpenRoster }: CampGridProps) {
   const [popover, setPopover] = useState<PopoverState | null>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const days = ALL_DAYS.filter(d => availableDays.includes(d));
 
-  // Compute effective time range
-  const allTimes = [
-    ...tracks.flatMap(t => [timeToMins(t.start_time), timeToMins(t.end_time)]),
-    ...activities.flatMap(a => [timeToMins(a.start_time), timeToMins(a.end_time)]),
-  ];
-  const effectiveStart = allTimes.length ? Math.min(GRID_START, Math.min(...allTimes)) : GRID_START;
-  const effectiveEnd = allTimes.length ? Math.max(GRID_END, Math.max(...allTimes)) : GRID_END;
-  const visibleSlots = timeSlots.filter(m => m >= effectiveStart && m <= effectiveEnd);
+  // Auto-scroll to 8 AM on mount
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = timeToY(8 * 60) - 64;
+    }
+  }, []);
 
-  function handleColumnClick(e: React.MouseEvent<HTMLDivElement>, day: string) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const relY = e.clientY - rect.top + e.currentTarget.scrollTop;
-    // Snap to 30-min slot
-    const clickMins = yToMins(relY);
-    const snapped = Math.max(effectiveStart, Math.min(effectiveEnd - 60, clickMins));
-    setPopover({
-      kind: "create",
-      x: e.clientX, y: e.clientY,
-      prefillStart: minsToTime(snapped),
-      prefillEnd: minsToTime(snapped + 60),
-      prefillDay: day,
-    });
-  }
+  // Current time
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
 
-  // Pre-compute overlap columns per day for activities
+  // Per-day activity overlap columns
   const actColsByDay: Record<string, Record<string, { col: number; cols: number }>> = {};
   for (const day of days) {
     const dayActs = activities.filter(a => parseDays(a.day).includes(day));
@@ -618,35 +612,64 @@ export function CampGrid({ tracks, activities, series, availableDays, campId, on
     })));
   }
 
-  // Current time indicator
-  const now = new Date();
-  const nowMins = now.getHours() * 60 + now.getMinutes();
-  const showNow = nowMins >= effectiveStart && nowMins <= effectiveEnd;
+  function handleColumnClick(e: React.MouseEvent<HTMLDivElement>, day: string) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relY = e.clientY - rect.top;
+    const clickMins = yToMins(relY);
+    const snapped = Math.max(0, Math.min(GRID_END - 60, clickMins));
+    setPopover({
+      kind: "create", x: e.clientX, y: e.clientY,
+      prefillStart: minsToTime(snapped),
+      prefillEnd: minsToTime(snapped + 60),
+      prefillDay: day,
+    });
+  }
 
   return (
     <div className="select-none">
-      {/* Hint */}
       <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Click any empty area to add an activity or track · Click a block to edit</p>
 
       <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-        {/* Day header row */}
+
+        {/* Tracks header band */}
+        <TracksBand tracks={tracks} onClickTrack={(e, track) => setPopover({ kind: "track", x: e.clientX, y: e.clientY, track })} />
+
+        {/* Day column headers */}
         <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 sticky top-0 z-10">
           <div className="w-16 shrink-0" />
-          {days.map(day => (
-            <div key={day} className="flex-1 min-w-28 px-2 py-2 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 border-l border-gray-200 dark:border-gray-700">
-              {day.slice(0, 3)}
-            </div>
-          ))}
+          {days.map(day => {
+            const date = dateForDay(day, campStartDate);
+            return (
+              <div key={day} className="flex-1 min-w-28 px-2 py-2 text-center border-l border-gray-200 dark:border-gray-700">
+                <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">{day.slice(0, 3)}</p>
+                {date && <p className="text-xs text-gray-400 dark:text-gray-500">{date}</p>}
+              </div>
+            );
+          })}
         </div>
 
-        {/* Scrollable grid body */}
-        <div className="overflow-y-auto max-h-[70vh]">
-          <div className="flex" style={{ minHeight: timeToY(effectiveEnd) - timeToY(effectiveStart) + SLOT_HEIGHT }}>
+        {/* Scrollable time grid */}
+        <div ref={scrollRef} className="overflow-y-auto max-h-[65vh]">
+          <div className="flex relative" style={{ height: TOTAL_HEIGHT }}>
+
+            {/* Current time line — single overlay spanning all day columns */}
+            <div style={{
+              position: "absolute",
+              top: timeToY(nowMins),
+              left: 64, // after time label column
+              right: 0,
+              zIndex: 5,
+              pointerEvents: "none",
+            }} className="flex items-center">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500 -ml-1.5 shrink-0" />
+              <div className="flex-1 h-px bg-red-400" />
+            </div>
+
             {/* Time labels */}
-            <div className="w-16 shrink-0 relative" style={{ height: timeToY(effectiveEnd) - timeToY(effectiveStart) + SLOT_HEIGHT }}>
-              {visibleSlots.map(mins => (
+            <div className="w-16 shrink-0 relative">
+              {timeSlots.map(mins => (
                 mins % 60 === 0 && (
-                  <div key={mins} style={{ position: "absolute", top: timeToY(mins) - timeToY(effectiveStart) - 8 }}
+                  <div key={mins} style={{ position: "absolute", top: timeToY(mins) - 8 }}
                     className="text-right pr-2 w-full text-xs text-gray-400 dark:text-gray-500 leading-none">
                     {formatTime(minsToTime(mins))}
                   </div>
@@ -654,59 +677,28 @@ export function CampGrid({ tracks, activities, series, availableDays, campId, on
               ))}
             </div>
 
-            {/* Day columns */}
+            {/* Day columns — activities only */}
             {days.map(day => {
               const dayActs = activities.filter(a => parseDays(a.day).includes(day));
               const colMap = actColsByDay[day];
-              const colHeight = timeToY(effectiveEnd) - timeToY(effectiveStart) + SLOT_HEIGHT;
 
               return (
-                <div key={day} className="flex-1 min-w-28 border-l border-gray-200 dark:border-gray-700 relative cursor-pointer"
-                  style={{ height: colHeight }}
+                <div key={day}
+                  className="flex-1 min-w-28 border-l border-gray-200 dark:border-gray-700 relative cursor-pointer"
+                  style={{ height: TOTAL_HEIGHT }}
                   onClick={e => handleColumnClick(e, day)}>
 
                   {/* Slot lines */}
-                  {visibleSlots.map(mins => (
-                    <div key={mins} style={{ position: "absolute", top: timeToY(mins) - timeToY(effectiveStart), width: "100%" }}
+                  {timeSlots.map(mins => (
+                    <div key={mins} style={{ position: "absolute", top: timeToY(mins), width: "100%" }}
                       className={`border-t ${mins % 60 === 0 ? "border-gray-200 dark:border-gray-700" : "border-gray-100 dark:border-gray-800"}`} />
                   ))}
-
-                  {/* Current time indicator */}
-                  {showNow && (
-                    <div style={{ position: "absolute", top: timeToY(nowMins) - timeToY(effectiveStart), width: "100%", zIndex: 5 }}
-                      className="flex items-center pointer-events-none">
-                      <div className="w-2 h-2 rounded-full bg-red-500 -ml-1" />
-                      <div className="flex-1 h-px bg-red-400" />
-                    </div>
-                  )}
-
-                  {/* Track blocks */}
-                  {tracks.map(track => {
-                    const top = timeToY(timeToMins(track.start_time)) - timeToY(effectiveStart);
-                    const height = Math.max(20, timeToY(timeToMins(track.end_time)) - timeToY(timeToMins(track.start_time)));
-                    return (
-                      <div key={track.id}
-                        style={{ position: "absolute", top, height, left: 2, right: 2, zIndex: 2 }}
-                        className="rounded-md border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900 px-1.5 py-1 overflow-hidden cursor-pointer hover:brightness-95 transition-[filter]"
-                        onClick={e => { e.stopPropagation(); setPopover({ kind: "track", x: e.clientX, y: e.clientY, track }); }}>
-                        <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 truncate leading-tight">
-                          {track.emoji ? `${track.emoji} ` : ""}{track.name}
-                        </p>
-                        {track.location && height > 36 && (
-                          <p className="text-xs text-blue-700 dark:text-blue-300 truncate leading-tight opacity-75">📍 {track.location}</p>
-                        )}
-                        {height > 48 && (
-                          <p className="text-xs text-blue-700 dark:text-blue-300 leading-tight opacity-60">{track.enrolled}/{track.capacity}</p>
-                        )}
-                      </div>
-                    );
-                  })}
 
                   {/* Activity blocks */}
                   {dayActs.map(activity => {
                     const { col, cols } = colMap[activity.id] ?? { col: 0, cols: 1 };
-                    const top = timeToY(timeToMins(activity.start_time)) - timeToY(effectiveStart);
-                    const height = Math.max(20, timeToY(timeToMins(activity.end_time)) - timeToY(timeToMins(activity.start_time)));
+                    const top = timeToY(timeToMins(activity.start_time));
+                    const height = Math.max(24, timeToY(timeToMins(activity.end_time)) - top);
                     const widthPct = 100 / cols;
                     return (
                       <div key={activity.id}

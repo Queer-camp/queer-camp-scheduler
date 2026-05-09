@@ -238,6 +238,7 @@ export default function CampDetailPage() {
   const { id: campId } = useParams<{ id: string }>();
   const [tab, setTab] = useState<Tab>("tracks");
   const [campName, setCampName] = useState("");
+  const [campStartDate, setCampStartDate] = useState("");
 
   useKeyboardShortcut("1", () => setTab("tracks"));
   useKeyboardShortcut("2", () => setTab("activities"));
@@ -325,7 +326,7 @@ export default function CampDetailPage() {
   useEffect(() => {
     fetch(`/api/admin/camps`).then(r => r.json()).then((camps: { id: string; name: string; start_date: string; end_date: string }[]) => {
       const camp = camps.find(c => c.id === campId);
-      if (camp) { setCampName(camp.name); setAvailableDays(daysInRange(camp.start_date, camp.end_date)); }
+      if (camp) { setCampName(camp.name); setCampStartDate(camp.start_date); setAvailableDays(daysInRange(camp.start_date, camp.end_date)); }
     });
     loadTracks(); loadActivities(); loadSeries();
   }, [campId]);
@@ -626,6 +627,7 @@ export default function CampDetailPage() {
           activities={activities}
           series={series}
           availableDays={availableDays}
+          campStartDate={campStartDate}
           campId={campId}
           onUpdate={() => { loadTracks(); loadActivities(); }}
           onOpenRoster={openRoster}

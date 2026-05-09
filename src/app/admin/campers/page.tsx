@@ -167,12 +167,12 @@ export default function CampersPage() {
         <h1 className="text-2xl font-bold">Campers</h1>
         <div className="flex items-center gap-3">
           {!loadingCampers && (
-            <span className="text-sm text-gray-500">{campers.length} registered</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">{campers.length} registered</span>
           )}
           {!loadingCampers && campers.length > 0 && !showAll && (
             <button
               onClick={() => selecting ? exitSelecting() : setSelecting(true)}
-              className="text-sm text-gray-600 hover:text-gray-900 underline"
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline"
             >
               {selecting ? "Cancel" : <span>Select<ShortcutBadge>S</ShortcutBadge></span>}
             </button>
@@ -195,7 +195,7 @@ export default function CampersPage() {
             <select
               value={selectedCampId}
               onChange={e => { setSelectedCampId(e.target.value); setSearch(""); exitSelecting(); }}
-              className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black bg-white"
+              className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white bg-white dark:bg-gray-800 dark:text-gray-100"
             >
               {camps.filter(c => !c.archived).map(c => (
                 <option key={c.id} value={c.id}>
@@ -206,7 +206,7 @@ export default function CampersPage() {
           )}
           <button
             onClick={() => { setShowAll(!showAll); setSearch(""); exitSelecting(); }}
-            className="text-sm text-gray-600 hover:text-gray-900 underline"
+            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline"
           >
             {showAll ? "Filter by camp" : "All campers"}
           </button>
@@ -215,42 +215,42 @@ export default function CampersPage() {
 
       {/* New camper form */}
       {showNewForm && !showAll && (
-        <form onSubmit={handleCreateCamper} className="mb-6 p-6 bg-white rounded-lg border border-gray-200 space-y-4">
+        <form onSubmit={handleCreateCamper} className="mb-6 p-6 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
           <h2 className="font-semibold">New camper</h2>
           {newError && <p className="text-sm text-red-600">{newError}</p>}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Chosen first name</label>
-              <input required type="text" value={newForm.chosen_first_name} onChange={e => setNewForm({ ...newForm, chosen_first_name: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black" placeholder="Sparkles" />
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Chosen first name</label>
+              <input required type="text" value={newForm.chosen_first_name} onChange={e => setNewForm({ ...newForm, chosen_first_name: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Sparkles" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Chosen last name</label>
-              <input required type="text" value={newForm.chosen_last_name} onChange={e => setNewForm({ ...newForm, chosen_last_name: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black" placeholder="McCrispy" />
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Chosen last name</label>
+              <input required type="text" value={newForm.chosen_last_name} onChange={e => setNewForm({ ...newForm, chosen_last_name: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="McCrispy" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Legal first name</label>
-              <input required type="text" value={newForm.legal_first_name} onChange={e => setNewForm({ ...newForm, legal_first_name: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black" />
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Legal first name</label>
+              <input required type="text" value={newForm.legal_first_name} onChange={e => setNewForm({ ...newForm, legal_first_name: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Legal last name</label>
-              <input required type="text" value={newForm.legal_last_name} onChange={e => setNewForm({ ...newForm, legal_last_name: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black" />
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Legal last name</label>
+              <input required type="text" value={newForm.legal_last_name} onChange={e => setNewForm({ ...newForm, legal_last_name: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Pronouns <span className="font-normal text-gray-400">(optional)</span></label>
-              <input type="text" value={newForm.pronouns} onChange={e => setNewForm({ ...newForm, pronouns: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black" placeholder="they/them" />
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pronouns <span className="font-normal text-gray-400 dark:text-gray-500">(optional)</span></label>
+              <input type="text" value={newForm.pronouns} onChange={e => setNewForm({ ...newForm, pronouns: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="they/them" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="font-normal text-gray-400">(optional — schedule link will be sent if provided)</span></label>
-              <input type="email" value={newForm.email} onChange={e => setNewForm({ ...newForm, email: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black" placeholder="sparkles@example.com" />
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email <span className="font-normal text-gray-400 dark:text-gray-500">(optional — schedule link will be sent if provided)</span></label>
+              <input type="email" value={newForm.email} onChange={e => setNewForm({ ...newForm, email: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="sparkles@example.com" />
             </div>
           </div>
           <div className="flex items-center gap-3">
             <button type="submit" disabled={savingNew} className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50">
               {savingNew ? "Creating…" : "Create camper"}
             </button>
-            <button type="button" onClick={() => { setShowNewForm(false); setNewForm(EMPTY_CAMPER_FORM); setNewError(null); }} className="text-sm text-gray-500 hover:text-gray-900 underline">
+            <button type="button" onClick={() => { setShowNewForm(false); setNewForm(EMPTY_CAMPER_FORM); setNewError(null); }} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
               Discard
             </button>
           </div>
@@ -264,28 +264,28 @@ export default function CampersPage() {
           placeholder="Search by name or email…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
         />
         <span className="[@media(pointer:fine)]:flex hidden absolute right-3 top-1/2 -translate-y-1/2 items-center pointer-events-none">
-          <kbd className="text-xs font-mono bg-gray-100 border border-gray-300 rounded px-1.5 py-0.5 text-gray-400">/</kbd>
+          <kbd className="text-xs font-mono bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 text-gray-400 dark:text-gray-400">/</kbd>
         </span>
       </div>
 
       {loadingCamps || loadingCampers ? (
-        <p className="text-gray-500 text-sm">Loading…</p>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">Loading…</p>
       ) : filtered.length === 0 ? (
-        <p className="text-gray-500 text-sm">
+        <p className="text-gray-500 dark:text-gray-400 text-sm">
           {search ? "No campers match your search." : "No campers registered yet."}
         </p>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
           {/* Select all row */}
           {selecting && (
             <button
               onClick={toggleSelectAll}
-              className="w-full flex items-center gap-4 px-5 py-3 hover:bg-gray-50 text-sm text-gray-600"
+              className="w-full flex items-center gap-4 px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm text-gray-600 dark:text-gray-400"
             >
-              <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${allSelected ? "bg-black border-black" : "border-gray-300"}`}>
+              <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${allSelected ? "bg-black border-black" : "border-gray-300 dark:border-gray-600"}`}>
                 {allSelected && <span className="text-white text-xs">✓</span>}
               </span>
               {allSelected ? "Deselect all" : `Select all (${filtered.length})`}
@@ -297,32 +297,32 @@ export default function CampersPage() {
             const row = (
               <div
                 key={c.id}
-                className={`flex items-center gap-4 px-5 py-4 transition-colors ${selecting ? "cursor-pointer hover:bg-gray-50" : ""} ${isSelected ? "bg-blue-50" : ""}`}
+                className={`flex items-center gap-4 px-5 py-4 transition-colors ${selecting ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800" : ""} ${isSelected ? "bg-blue-50 dark:bg-blue-950" : ""}`}
                 onClick={selecting ? () => toggleSelect(c.id) : undefined}
               >
                 {selecting && (
-                  <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected ? "bg-black border-black" : "border-gray-300"}`}>
+                  <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected ? "bg-black border-black" : "border-gray-300 dark:border-gray-600"}`}>
                     {isSelected && <span className="text-white text-xs">✓</span>}
                   </span>
                 )}
                 <div className="flex-1 flex items-center justify-between min-w-0">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900">
+                      <span className="font-medium text-gray-900 dark:text-white">
                         {c.chosen_first_name} {c.chosen_last_name}
                       </span>
                       {c.pronouns && (
-                        <span className="text-xs text-gray-400">({c.pronouns})</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">({c.pronouns})</span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-500">{c.email}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{c.email}</p>
                     {c.camps && (
-                      <p className="text-xs text-gray-400">{c.camps.name}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">{c.camps.name}</p>
                     )}
                   </div>
                   <div className="text-right shrink-0 ml-4">
-                    <p className="text-sm text-gray-700">{c.tracks?.name ?? <span className="text-gray-400">No track</span>}</p>
-                    <p className="text-xs text-gray-400">{c.registrations.length} activit{c.registrations.length === 1 ? "y" : "ies"}</p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">{c.tracks?.name ?? <span className="text-gray-400 dark:text-gray-500">No track</span>}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">{c.registrations.length} activit{c.registrations.length === 1 ? "y" : "ies"}</p>
                   </div>
                 </div>
               </div>
@@ -331,7 +331,7 @@ export default function CampersPage() {
             return selecting ? (
               <div key={c.id}>{row}</div>
             ) : (
-              <Link key={c.id} href={`/admin/campers/${c.id}`} className="block hover:bg-gray-50 transition-colors">
+              <Link key={c.id} href={`/admin/campers/${c.id}`} className="block hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 {row}
               </Link>
             );
@@ -341,14 +341,14 @@ export default function CampersPage() {
 
       {/* Sticky action bar */}
       {selecting && selected.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg px-6 py-4">
+        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-lg px-6 py-4">
           <div className="max-w-5xl mx-auto flex flex-col gap-3">
-            <p className="text-sm font-medium text-gray-900">{selected.size} camper{selected.size === 1 ? "" : "s"} selected</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">{selected.size} camper{selected.size === 1 ? "" : "s"} selected</p>
             <div className="flex items-center gap-3 flex-wrap">
               <select
                 value={moveToCampId}
                 onChange={e => { setMoveToCampId(e.target.value); setConfirmBulkMove(false); }}
-                className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black bg-white"
+                className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white bg-white dark:bg-gray-800 dark:text-gray-100"
               >
                 <option value="">Move to camp…</option>
                 {destinationCamps.map(c => (
@@ -369,7 +369,7 @@ export default function CampersPage() {
 
               {confirmBulkMove && (
                 <>
-                  <span className="text-sm text-amber-700">Clears all tracks and activities —</span>
+                  <span className="text-sm text-amber-700 dark:text-amber-400">Clears all tracks and activities —</span>
                   <button
                     onClick={executeBulkMove}
                     disabled={movingBulk}

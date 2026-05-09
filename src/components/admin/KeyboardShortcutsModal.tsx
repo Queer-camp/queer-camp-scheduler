@@ -43,7 +43,7 @@ const GROUPS = [
 
 function Key({ label }: { label: string }) {
   return (
-    <kbd className="inline-flex items-center px-2 py-1 text-xs font-mono bg-gray-100 border border-gray-300 rounded text-gray-700 leading-none">
+    <kbd className="inline-flex items-center px-2 py-1 text-xs font-mono bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-400 leading-none">
       {label}
     </kbd>
   );
@@ -65,26 +65,26 @@ export function KeyboardShortcutsModal({ onClose }: { onClose: () => void }) {
     >
       <div className="absolute inset-0 bg-black/40" />
       <div
-        className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
+        className="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-semibold">Keyboard shortcuts</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-lg leading-none">✕</button>
+          <button onClick={onClose} className="text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-lg leading-none">✕</button>
         </div>
 
         <div className="space-y-5">
           {GROUPS.map(group => (
             <div key={group.label}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{group.label}</p>
+              <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">{group.label}</p>
               <div className="space-y-2">
                 {group.shortcuts.map(s => (
                   <div key={s.description} className="flex items-center justify-between gap-4">
-                    <span className="text-sm text-gray-700">{s.description}</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{s.description}</span>
                     <div className="flex items-center gap-1 shrink-0">
                       {s.keys.map((k, i) => (
                         <span key={i} className="flex items-center gap-1">
-                          {i > 0 && <span className="text-xs text-gray-400">then</span>}
+                          {i > 0 && <span className="text-xs text-gray-400 dark:text-gray-500">then</span>}
                           <Key label={k} />
                         </span>
                       ))}
@@ -96,7 +96,7 @@ export function KeyboardShortcutsModal({ onClose }: { onClose: () => void }) {
           ))}
         </div>
 
-        <p className="text-xs text-gray-400 mt-5 text-center">Press <Key label="?" /> or <Key label="Esc" /> to close</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-5 text-center">Press <Key label="?" /> or <Key label="Esc" /> to close</p>
       </div>
     </div>
   );

@@ -80,7 +80,7 @@ export default function CampsPage() {
   const active = camps.filter(c => !c.archived);
   const archived = camps.filter(c => c.archived);
 
-  const inputCls = "w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black";
+  const inputCls = "w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500";
 
   function CampCard({ camp }: { camp: FullCamp }) {
     const past = isPast(camp);
@@ -88,18 +88,18 @@ export default function CampsPage() {
 
     if (isEditing) {
       return (
-        <form onSubmit={saveCamp} className="p-5 bg-white rounded-lg border border-gray-200 space-y-4">
+        <form onSubmit={saveCamp} className="p-5 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
             <input type="text" required value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className={inputCls} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start date</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start date</label>
               <input type="date" required value={editForm.start_date} onChange={e => setEditForm({ ...editForm, start_date: e.target.value })} className={inputCls} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End date</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End date</label>
               <input type="date" required value={editForm.end_date} onChange={e => setEditForm({ ...editForm, end_date: e.target.value })} className={inputCls} />
             </div>
           </div>
@@ -111,7 +111,7 @@ export default function CampsPage() {
             <button type="submit" disabled={saving} className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50">
               {saving ? "Saving…" : "Save"}
             </button>
-            <button type="button" onClick={() => setEditingCamp(null)} className="text-sm text-gray-600 hover:text-gray-900 underline">
+            <button type="button" onClick={() => setEditingCamp(null)} className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
               Cancel
             </button>
           </div>
@@ -120,50 +120,50 @@ export default function CampsPage() {
     }
 
     return (
-      <div className="p-5 bg-white rounded-lg border border-gray-200 flex items-start justify-between gap-4">
+      <div className="p-5 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Link href={`/admin/camps/${camp.id}`} className={`font-medium hover:underline ${past || camp.archived ? "text-gray-400" : ""}`}>{camp.name}</Link>
+            <Link href={`/admin/camps/${camp.id}`} className={`font-medium hover:underline ${past || camp.archived ? "text-gray-400 dark:text-gray-500" : ""}`}>{camp.name}</Link>
             {camp.is_active ? (
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Active</span>
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Active</span>
             ) : (
-              !camp.archived && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Draft</span>
+              !camp.archived && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Draft</span>
             )}
-            {past && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Past</span>}
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${camp.registration_open ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>
+            {past && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">Past</span>}
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${camp.registration_open ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"}`}>
               {camp.registration_open ? "Registration open" : "Registration closed"}
             </span>
           </div>
-          <p className="text-sm text-gray-500 mt-0.5">{formatDateRange(camp.start_date, camp.end_date)}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{formatDateRange(camp.start_date, camp.end_date)}</p>
         </div>
         <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
-          <Link href={`/admin/camps/${camp.id}`} className="text-sm font-medium text-gray-900 hover:text-black underline">
+          <Link href={`/admin/camps/${camp.id}`} className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-black dark:hover:text-white underline">
             Manage
           </Link>
-          <button onClick={() => { setEditingCamp(camp); setEditForm({ name: camp.name, start_date: camp.start_date, end_date: camp.end_date, registration_open: camp.registration_open }); setShowForm(false); }} className="text-sm text-gray-600 hover:text-gray-900 underline">
+          <button onClick={() => { setEditingCamp(camp); setEditForm({ name: camp.name, start_date: camp.start_date, end_date: camp.end_date, registration_open: camp.registration_open }); setShowForm(false); }} className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
             Edit
           </button>
-          <button onClick={() => patch(camp, { registration_open: !camp.registration_open })} className="text-sm text-gray-600 hover:text-gray-900 underline">
+          <button onClick={() => patch(camp, { registration_open: !camp.registration_open })} className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
             {camp.registration_open ? "Close reg" : "Open reg"}
           </button>
           {camp.is_active ? (
-            <button onClick={() => patch(camp, { is_active: false })} className="text-sm text-gray-600 hover:text-gray-900 underline">
+            <button onClick={() => patch(camp, { is_active: false })} className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
               Set draft
             </button>
           ) : (
-            <button onClick={() => patch(camp, { is_active: true })} className="text-sm text-gray-600 hover:text-gray-900 underline">
+            <button onClick={() => patch(camp, { is_active: true })} className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
               Set active
             </button>
           )}
-          <button onClick={() => cloneCamp(camp)} className="text-sm text-gray-600 hover:text-gray-900 underline">
+          <button onClick={() => cloneCamp(camp)} className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
             Clone
           </button>
           {!camp.archived ? (
-            <button onClick={() => patch(camp, { archived: true })} className="text-sm text-gray-400 hover:text-gray-700 underline">
+            <button onClick={() => patch(camp, { archived: true })} className="text-sm text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 underline">
               Archive
             </button>
           ) : (
-            <button onClick={() => patch(camp, { archived: false })} className="text-sm text-gray-400 hover:text-gray-700 underline">
+            <button onClick={() => patch(camp, { archived: false })} className="text-sm text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 underline">
               Unarchive
             </button>
           )}
@@ -182,20 +182,20 @@ export default function CampsPage() {
       </div>
 
       {showForm && (
-        <form onSubmit={handleCreate} className="mb-8 p-6 bg-white rounded-lg border border-gray-200 space-y-4">
+        <form onSubmit={handleCreate} className="mb-8 p-6 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
           <h2 className="font-semibold">New camp</h2>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
             <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={inputCls} placeholder="Queer Camp 2026" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start date</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start date</label>
               <input type="date" required value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} className={inputCls} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End date</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End date</label>
               <input type="date" required value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })} className={inputCls} />
             </div>
           </div>
@@ -210,17 +210,17 @@ export default function CampsPage() {
       )}
 
       {loading ? (
-        <p className="text-gray-500 text-sm">Loading…</p>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">Loading…</p>
       ) : (
         <div className="space-y-3">
-          {active.length === 0 && <p className="text-gray-500 text-sm">No camps yet.</p>}
+          {active.length === 0 && <p className="text-gray-500 dark:text-gray-400 text-sm">No camps yet.</p>}
           {active.map(camp => <CampCard key={camp.id} camp={camp} />)}
 
           {archived.length > 0 && (
             <div className="mt-6">
               <button
                 onClick={() => setShowArchived(!showArchived)}
-                className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 font-medium mb-3"
+                className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 font-medium mb-3"
               >
                 <span>{showArchived ? "▾" : "▸"}</span>
                 Archived camps ({archived.length})

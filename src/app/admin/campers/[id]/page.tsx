@@ -171,7 +171,7 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
     await load();
   }
 
-  if (loading) return <p className="text-gray-500 text-sm">Loading…</p>;
+  if (loading) return <p className="text-gray-500 dark:text-gray-400 text-sm">Loading…</p>;
   if (!camper) return <p className="text-red-600 text-sm">Camper not found.</p>;
 
   const registeredIds = new Set(camper.registrations.map(r => r.activities.id));
@@ -193,7 +193,7 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
   return (
     <div>
       <div className="mb-6">
-        <Link href="/admin/campers" className="text-sm text-gray-500 hover:text-gray-900">
+        <Link href="/admin/campers" className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">
           ← Campers
         </Link>
       </div>
@@ -202,17 +202,17 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
         <div>
           <h1 className="text-2xl font-bold">
             {camper.chosen_first_name} {camper.chosen_last_name}
-            {camper.pronouns && <span className="text-base font-normal text-gray-400 ml-2">({camper.pronouns})</span>}
+            {camper.pronouns && <span className="text-base font-normal text-gray-400 dark:text-gray-500 ml-2">({camper.pronouns})</span>}
           </h1>
           {camper.email
-            ? <p className="text-sm text-gray-500 mt-0.5">{camper.email}</p>
-            : <p className="text-sm text-amber-600 mt-0.5">No email — print schedule below</p>
+            ? <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{camper.email}</p>
+            : <p className="text-sm text-amber-600 dark:text-amber-400 mt-0.5">No email — print schedule below</p>
           }
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
             Legal name: {camper.legal_first_name} {camper.legal_last_name}
           </p>
           {currentCamp && (
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
               Camp: {currentCamp.name} — {formatDateRange(currentCamp.start_date, currentCamp.end_date)}
             </p>
           )}
@@ -222,7 +222,7 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
             href={`/schedule?token=${camper.token}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-50"
+            className="text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             Print schedule ↗
           </a>
@@ -241,20 +241,20 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
       {/* Track */}
       <section className="mb-8">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Track</h2>
+          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Track</h2>
           {!editingTrack && (
-            <button onClick={() => setEditingTrack(true)} className="text-sm text-gray-600 hover:text-gray-900 underline">
+            <button onClick={() => setEditingTrack(true)} className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
               {camper.tracks ? "Change" : "Assign"}
             </button>
           )}
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 px-5 py-4">
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 px-5 py-4">
           {editingTrack ? (
             <div className="flex items-center gap-3">
               <select
                 value={selectedTrackId}
                 onChange={e => setSelectedTrackId(e.target.value)}
-                className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                className="flex-1 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white dark:bg-gray-800 dark:text-gray-100"
               >
                 <option value="">No track</option>
                 {allTracks.map(t => (
@@ -270,18 +270,18 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
               >
                 {savingTrack ? "Saving…" : "Save"}
               </button>
-              <button onClick={() => { setEditingTrack(false); setSelectedTrackId(camper.track_id ?? ""); }} className="text-sm text-gray-500 hover:text-gray-900 underline">
+              <button onClick={() => { setEditingTrack(false); setSelectedTrackId(camper.track_id ?? ""); }} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
                 Cancel
               </button>
             </div>
           ) : camper.tracks ? (
             <p className="font-medium">{camper.tracks.name}
-              <span className="text-sm font-normal text-gray-500 ml-2">
+              <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-2">
                 {formatTime(camper.tracks.start_time)} – {formatTime(camper.tracks.end_time)}
               </span>
             </p>
           ) : (
-            <p className="text-gray-400 text-sm">No track assigned</p>
+            <p className="text-gray-400 dark:text-gray-500 text-sm">No track assigned</p>
           )}
         </div>
       </section>
@@ -289,21 +289,21 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
       {/* Activities */}
       <section className="mb-8">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Activities</h2>
+          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Activities</h2>
           <button
             onClick={() => setAddingActivity(!addingActivity)}
-            className="text-sm text-gray-600 hover:text-gray-900 underline"
+            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline"
           >
             {addingActivity ? "Cancel" : "Add activity"}
           </button>
         </div>
 
         {addingActivity && (
-          <div className="mb-4 p-4 bg-white border border-gray-200 rounded-lg flex items-center gap-3">
+          <div className="mb-4 p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg flex items-center gap-3">
             <select
               value={selectedActivityId}
               onChange={e => setSelectedActivityId(e.target.value)}
-              className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+              className="flex-1 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white dark:bg-gray-800 dark:text-gray-100"
             >
               <option value="">Select an activity…</option>
               {unregisteredActivities.map(a => (
@@ -323,25 +323,25 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
         )}
 
         {sortedDays.length === 0 ? (
-          <div className="bg-white rounded-lg border border-gray-200 px-5 py-4">
-            <p className="text-gray-400 text-sm">No activities registered.</p>
+          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 px-5 py-4">
+            <p className="text-gray-400 dark:text-gray-500 text-sm">No activities registered.</p>
           </div>
         ) : (
           <div className="space-y-4">
             {sortedDays.map(day => (
               <div key={day}>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">{formatDay(day)}</p>
-                <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
+                <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{formatDay(day)}</p>
+                <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
                   {byDay[day].map(act => (
                     <div key={act.id} className="flex items-center justify-between px-5 py-3">
                       <div className="flex items-center gap-2">
                         {act.emoji && <span>{act.emoji}</span>}
                         <span className="text-sm font-medium">{act.name}</span>
-                        <span className="text-sm text-gray-400">{formatTime(act.start_time)} – {formatTime(act.end_time)}</span>
+                        <span className="text-sm text-gray-400 dark:text-gray-500">{formatTime(act.start_time)} – {formatTime(act.end_time)}</span>
                       </div>
                       <button
                         onClick={() => removeRegistration(act.id)}
-                        className="text-xs text-gray-400 hover:text-red-600 underline"
+                        className="text-xs text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 underline"
                       >
                         Remove
                       </button>
@@ -358,19 +358,19 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
       {otherCamps.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Move to camp</h2>
+            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Move to camp</h2>
             {!movingCamp && (
-              <button onClick={() => setMovingCamp(true)} className="text-sm text-gray-600 hover:text-gray-900 underline">
+              <button onClick={() => setMovingCamp(true)} className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
                 Move
               </button>
             )}
           </div>
           {movingCamp && (
-            <div className="bg-white rounded-lg border border-gray-200 px-5 py-4 space-y-4">
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 px-5 py-4 space-y-4">
               <select
                 value={selectedCampId}
                 onChange={e => { setSelectedCampId(e.target.value); setConfirmMove(false); }}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white dark:bg-gray-800 dark:text-gray-100"
               >
                 <option value="">Select a camp…</option>
                 {otherCamps.map(c => (
@@ -381,7 +381,7 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
               </select>
 
               {selectedCampId && !confirmMove && (
-                <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-4 py-3">
+                <p className="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded px-4 py-3">
                   This will remove their current track and all activity registrations. Their name, email, and pronouns will carry over.{" "}
                   <button onClick={() => setConfirmMove(true)} className="font-medium underline">Confirm move</button>
                 </p>
@@ -396,14 +396,14 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
                   >
                     {savingMove ? "Moving…" : "Move camper"}
                   </button>
-                  <button onClick={() => { setMovingCamp(false); setSelectedCampId(""); setConfirmMove(false); }} className="text-sm text-gray-500 hover:text-gray-900 underline">
+                  <button onClick={() => { setMovingCamp(false); setSelectedCampId(""); setConfirmMove(false); }} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
                     Cancel
                   </button>
                 </div>
               )}
 
               {!selectedCampId && (
-                <button onClick={() => setMovingCamp(false)} className="text-sm text-gray-500 hover:text-gray-900 underline">
+                <button onClick={() => setMovingCamp(false)} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
                   Cancel
                 </button>
               )}
@@ -413,18 +413,18 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
       )}
 
       {/* Danger zone */}
-      <section className="mt-12 pt-8 border-t border-gray-200 space-y-3">
+      <section className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700 space-y-3">
         {confirmRemove === null && (
           <div className="flex items-center gap-6">
             <button
               onClick={() => setConfirmRemove("camp")}
-              className="text-sm text-red-500 hover:text-red-700 underline"
+              className="text-sm text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 underline"
             >
               Remove from camp
             </button>
             <button
               onClick={() => setConfirmRemove("delete")}
-              className="text-sm text-red-500 hover:text-red-700 underline"
+              className="text-sm text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 underline"
             >
               Delete camper
             </button>
@@ -432,27 +432,27 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
         )}
 
         {confirmRemove === "camp" && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg space-y-3">
-            <p className="text-sm text-red-700 font-medium">Remove {camper.chosen_first_name} {camper.chosen_last_name} from this camp?</p>
-            <p className="text-sm text-red-600">Clears their track and all activity registrations. Their record is kept — you can move them to another camp later.</p>
+          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg space-y-3">
+            <p className="text-sm text-red-700 dark:text-red-400 font-medium">Remove {camper.chosen_first_name} {camper.chosen_last_name} from this camp?</p>
+            <p className="text-sm text-red-600 dark:text-red-400">Clears their track and all activity registrations. Their record is kept — you can move them to another camp later.</p>
             <div className="flex items-center gap-3">
               <button onClick={removeFromCamp} disabled={removing} className="text-sm bg-red-600 text-white px-4 py-2 rounded font-medium hover:bg-red-700 disabled:opacity-50">
                 {removing ? "Removing…" : "Remove from camp"}
               </button>
-              <button onClick={() => setConfirmRemove(null)} className="text-sm text-gray-500 hover:text-gray-900 underline">Cancel</button>
+              <button onClick={() => setConfirmRemove(null)} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">Cancel</button>
             </div>
           </div>
         )}
 
         {confirmRemove === "delete" && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg space-y-3">
-            <p className="text-sm text-red-700 font-medium">Permanently delete {camper.chosen_first_name} {camper.chosen_last_name}?</p>
-            <p className="text-sm text-red-600">Deletes their account and all registrations. This cannot be undone.</p>
+          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg space-y-3">
+            <p className="text-sm text-red-700 dark:text-red-400 font-medium">Permanently delete {camper.chosen_first_name} {camper.chosen_last_name}?</p>
+            <p className="text-sm text-red-600 dark:text-red-400">Deletes their account and all registrations. This cannot be undone.</p>
             <div className="flex items-center gap-3">
               <button onClick={deleteCamper} disabled={removing} className="text-sm bg-red-600 text-white px-4 py-2 rounded font-medium hover:bg-red-700 disabled:opacity-50">
                 {removing ? "Deleting…" : "Delete camper"}
               </button>
-              <button onClick={() => setConfirmRemove(null)} className="text-sm text-gray-500 hover:text-gray-900 underline">Cancel</button>
+              <button onClick={() => setConfirmRemove(null)} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">Cancel</button>
             </div>
           </div>
         )}

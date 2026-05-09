@@ -72,7 +72,7 @@ export default function AdminsPage() {
     await load();
   }
 
-  const inputCls = "w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black";
+  const inputCls = "w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500";
 
   return (
     <div>
@@ -87,23 +87,23 @@ export default function AdminsPage() {
       </div>
 
       {successMsg && (
-        <p className="mb-6 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-4 py-3">{successMsg}</p>
+        <p className="mb-6 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-200/20 rounded px-4 py-3">{successMsg}</p>
       )}
 
       {error && (
-        <p className="mb-6 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-4 py-3">{error}</p>
+        <p className="mb-6 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded px-4 py-3">{error}</p>
       )}
 
       {showForm && (
-        <form onSubmit={handleInvite} className="mb-8 p-6 bg-white rounded-lg border border-gray-200 space-y-4">
+        <form onSubmit={handleInvite} className="mb-8 p-6 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
           <h2 className="font-semibold">Invite a new admin</h2>
-          <p className="text-sm text-gray-500">They'll receive an email with a link to accept the invitation and log in.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">They'll receive an email with a link to accept the invitation and log in.</p>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
             <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={inputCls} placeholder="Jordan Smith" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
             <input type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className={inputCls} placeholder="jordan@example.com" />
           </div>
           <button type="submit" disabled={saving} className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50">
@@ -113,35 +113,35 @@ export default function AdminsPage() {
       )}
 
       {loading ? (
-        <p className="text-gray-500 text-sm">Loading…</p>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">Loading…</p>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
           {admins.map(a => (
             <div key={a.id} className="px-5 py-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-900">{a.name ?? <span className="text-gray-400 font-normal">No name</span>}</p>
-                  <p className="text-sm text-gray-500">{a.email}</p>
+                  <p className="font-medium text-gray-900 dark:text-white">{a.name ?? <span className="text-gray-400 dark:text-gray-500 font-normal">No name</span>}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{a.email}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{a.role}</span>
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">{a.role}</span>
                   {a.id !== me?.id && confirmRemoveId !== a.id && (
                     <button
                       onClick={() => { setConfirmRemoveId(a.id); setError(null); setSuccessMsg(null); }}
-                      className="text-sm text-gray-400 hover:text-red-600 underline"
+                      className="text-sm text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 underline"
                     >
                       Remove
                     </button>
                   )}
                   {a.id === me?.id && (
-                    <span className="text-xs text-gray-400">You</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">You</span>
                   )}
                 </div>
               </div>
 
               {confirmRemoveId === a.id && (
-                <div className="mt-3 flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-700 flex-1">
+                <div className="mt-3 flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
+                  <p className="text-sm text-red-700 dark:text-red-400 flex-1">
                     Remove {a.name ?? a.email}? They'll be notified by email.
                   </p>
                   <button
@@ -153,7 +153,7 @@ export default function AdminsPage() {
                   </button>
                   <button
                     onClick={() => setConfirmRemoveId(null)}
-                    className="text-sm text-gray-500 hover:text-gray-900 underline"
+                    className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline"
                   >
                     Cancel
                   </button>

@@ -46,13 +46,13 @@ function to24h(hour: number, minute: number, ampm: "AM" | "PM"): string {
 function TimePicker({ value, onChange, required }: { value: string; onChange: (v: string) => void; required?: boolean }) {
   const { hour, minute, ampm } = to12h(value);
   const update = (h: number, m: number, ap: "AM" | "PM") => onChange(to24h(h, m, ap));
-  const cls = "border border-gray-300 rounded px-2 py-2 text-sm";
+  const cls = "border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-sm dark:bg-gray-800 dark:text-gray-100";
   return (
     <div className="flex items-center gap-1">
       <select required={required && !value} value={hour} onChange={e => update(Number(e.target.value), minute, ampm)} className={cls}>
         {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => <option key={h} value={h}>{h}</option>)}
       </select>
-      <span className="text-gray-500">:</span>
+      <span className="text-gray-500 dark:text-gray-400">:</span>
       <select value={minute} onChange={e => update(hour, Number(e.target.value), ampm)} className={cls}>
         {Array.from({ length: 60 }, (_, i) => i).map(m => (
           <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
@@ -89,10 +89,10 @@ function DayPicker({ value, onChange, availableDays }: { value: string; onChange
             title={!available ? "This day is outside the camp date range" : undefined}
             className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${
               !available
-                ? "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed"
+                ? "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600 dark:border-gray-700"
                 : on
                   ? "bg-black text-white border-black"
-                  : "bg-white text-gray-700 border-gray-300 hover:border-gray-500"
+                  : "bg-white text-gray-700 border-gray-300 hover:border-gray-500 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:border-gray-400"
             }`}>
             {day.slice(0, 3)}
           </button>
@@ -110,12 +110,12 @@ function TrackFormFields({ form, setForm }: { form: TrackForm; setForm: (f: Trac
       <div className="col-span-2">
         <label className="block text-sm font-medium mb-1">Name</label>
         <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm" placeholder="Morning Track A" />
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Morning Track A" />
       </div>
       <div className="col-span-2">
-        <label className="block text-sm font-medium mb-1">Description <span className="text-gray-400 font-normal">(optional)</span></label>
+        <label className="block text-sm font-medium mb-1">Description <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
         <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" />
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">Start time</label>
@@ -128,12 +128,12 @@ function TrackFormFields({ form, setForm }: { form: TrackForm; setForm: (f: Trac
       <div>
         <label className="block text-sm font-medium mb-1">Capacity</label>
         <input required type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm" placeholder="20" />
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="20" />
       </div>
       <div>
-        <label className="block text-sm font-medium mb-1">Emoji <span className="text-gray-400 font-normal">(optional)</span></label>
+        <label className="block text-sm font-medium mb-1">Emoji <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
         <input value={form.emoji} onChange={e => setForm({ ...form, emoji: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm" placeholder="🎨" />
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="🎨" />
       </div>
     </div>
   );
@@ -145,12 +145,12 @@ function ActivityFormFields({ form, setForm, series, availableDays }: { form: Ac
       <div className="col-span-2">
         <label className="block text-sm font-medium mb-1">Name</label>
         <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm" placeholder="Pottery" />
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Pottery" />
       </div>
       <div className="col-span-2">
-        <label className="block text-sm font-medium mb-1">Description <span className="text-gray-400 font-normal">(optional)</span></label>
+        <label className="block text-sm font-medium mb-1">Description <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
         <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" />
       </div>
       <div className="col-span-2">
         <label className="block text-sm font-medium mb-1">Days</label>
@@ -167,17 +167,17 @@ function ActivityFormFields({ form, setForm, series, availableDays }: { form: Ac
       <div>
         <label className="block text-sm font-medium mb-1">Capacity</label>
         <input required type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm" placeholder="15" />
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="15" />
       </div>
       <div>
-        <label className="block text-sm font-medium mb-1">Emoji <span className="text-gray-400 font-normal">(optional)</span></label>
+        <label className="block text-sm font-medium mb-1">Emoji <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
         <input value={form.emoji} onChange={e => setForm({ ...form, emoji: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm" placeholder="🏺" />
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="🏺" />
       </div>
       <div className="col-span-2">
-        <label className="block text-sm font-medium mb-1">Series <span className="text-gray-400 font-normal">(optional)</span></label>
+        <label className="block text-sm font-medium mb-1">Series <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
         <select value={form.series_id} onChange={e => setForm({ ...form, series_id: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100">
           <option value="">None</option>
           {series.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
@@ -192,12 +192,12 @@ function SeriesFormFields({ form, setForm }: { form: SeriesForm; setForm: (f: Se
       <div>
         <label className="block text-sm font-medium mb-1">Name</label>
         <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm" placeholder="Pottery (2-part)" />
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Pottery (2-part)" />
       </div>
       <div>
-        <label className="block text-sm font-medium mb-1">Description <span className="text-gray-400 font-normal">(optional)</span></label>
+        <label className="block text-sm font-medium mb-1">Description <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
         <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" />
       </div>
     </div>
   );
@@ -290,12 +290,12 @@ export default function CampDetailPage() {
     onSuccess();
   }
 
-  const TAB = (t: Tab) => `px-4 py-2 text-sm font-medium border-b-2 ${tab === t ? "border-black text-gray-900" : "border-transparent text-gray-500 hover:text-gray-900"}`;
+  const TAB = (t: Tab) => `px-4 py-2 text-sm font-medium border-b-2 ${tab === t ? "border-black dark:border-white text-gray-900 dark:text-white" : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"}`;
   const btnPrimary = "bg-black text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50";
-  const btnSecondary = "text-sm text-gray-600 hover:text-gray-900 underline";
-  const btnDanger = "text-sm text-red-600 hover:text-red-800 underline";
-  const formCard = "mb-6 p-5 bg-white border border-gray-200 rounded-lg space-y-3";
-  const card = "p-4 bg-white border border-gray-200 rounded-lg";
+  const btnSecondary = "text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline";
+  const btnDanger = "text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline";
+  const formCard = "mb-6 p-5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg space-y-3";
+  const card = "p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg";
 
   function formatDays(day: string) {
     return parseDays(day).join(", ") || "—";
@@ -304,17 +304,17 @@ export default function CampDetailPage() {
   return (
     <div>
       <div className="mb-6">
-        <a href="/admin/camps" className="text-sm text-gray-500 hover:text-gray-900">← Camps</a>
+        <a href="/admin/camps" className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">← Camps</a>
         {campName && <h1 className="text-xl font-bold mt-2">{campName}</h1>}
       </div>
 
-      <div className="flex gap-0 border-b border-gray-200 mb-6">
+      <div className="flex gap-0 border-b border-gray-200 dark:border-gray-700 mb-6">
         <button className={TAB("tracks")} onClick={() => setTab("tracks")}>Tracks<ShortcutBadge>1</ShortcutBadge></button>
         <button className={TAB("activities")} onClick={() => setTab("activities")}>Activities<ShortcutBadge>2</ShortcutBadge></button>
         <button className={TAB("series")} onClick={() => setTab("series")}>Series<ShortcutBadge>3</ShortcutBadge></button>
       </div>
 
-      {error && <p className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</p>}
+      {error && <p className="mb-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-3 rounded">{error}</p>}
 
       {/* ── TRACKS ── */}
       {tab === "tracks" && (
@@ -333,7 +333,7 @@ export default function CampDetailPage() {
             </form>
           )}
 
-          {tracks.length === 0 ? <p className="text-sm text-gray-500">No tracks yet.</p> : (
+          {tracks.length === 0 ? <p className="text-sm text-gray-500 dark:text-gray-400">No tracks yet.</p> : (
             <div className="space-y-2">
               {tracks.map(t => editingTrack?.id === t.id ? (
                 <form key={t.id} className={formCard} onSubmit={e => { e.preventDefault(); handleSave(`/api/admin/tracks/${t.id}`, editTrackForm, () => { setEditingTrack(null); loadTracks(); }); }}>
@@ -347,8 +347,8 @@ export default function CampDetailPage() {
                 <div key={t.id} className={`${card} flex items-start justify-between`}>
                   <div>
                     <p className="font-medium">{t.emoji ? `${t.emoji} ` : ""}{t.name}</p>
-                    <p className="text-sm text-gray-500">{formatTime(t.start_time)} – {formatTime(t.end_time)} · Capacity {t.capacity}</p>
-                    {t.description && <p className="text-sm text-gray-500">{t.description}</p>}
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{formatTime(t.start_time)} – {formatTime(t.end_time)} · Capacity {t.capacity}</p>
+                    {t.description && <p className="text-sm text-gray-500 dark:text-gray-400">{t.description}</p>}
                   </div>
                   <div className="flex gap-3 ml-4 shrink-0">
                     <button onClick={() => { setEditingTrack(t); setEditTrackForm(trackToForm(t)); setShowTrackForm(false); }} className={btnSecondary}>Edit</button>
@@ -382,7 +382,7 @@ export default function CampDetailPage() {
             </form>
           )}
 
-          {activities.length === 0 ? <p className="text-sm text-gray-500">No activities yet.</p> : (
+          {activities.length === 0 ? <p className="text-sm text-gray-500 dark:text-gray-400">No activities yet.</p> : (
             <div className="space-y-2">
               {activities.map(a => editingActivity?.id === a.id ? (
                 <form key={a.id} className={formCard} onSubmit={e => {
@@ -400,9 +400,9 @@ export default function CampDetailPage() {
                 <div key={a.id} className={`${card} flex items-start justify-between`}>
                   <div>
                     <p className="font-medium">{a.emoji ? `${a.emoji} ` : ""}{a.name}</p>
-                    <p className="text-sm text-gray-500">{formatDays(a.day)} · {formatTime(a.start_time)} – {formatTime(a.end_time)} · Capacity {a.capacity}</p>
-                    {a.series_id && <p className="text-sm text-gray-500">Series: {series.find(s => s.id === a.series_id)?.name ?? "—"}</p>}
-                    {a.description && <p className="text-sm text-gray-500">{a.description}</p>}
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{formatDays(a.day)} · {formatTime(a.start_time)} – {formatTime(a.end_time)} · Capacity {a.capacity}</p>
+                    {a.series_id && <p className="text-sm text-gray-500 dark:text-gray-400">Series: {series.find(s => s.id === a.series_id)?.name ?? "—"}</p>}
+                    {a.description && <p className="text-sm text-gray-500 dark:text-gray-400">{a.description}</p>}
                   </div>
                   <div className="flex gap-3 ml-4 shrink-0">
                     <button onClick={() => { setEditingActivity(a); setEditActivityForm(activityToForm(a)); setShowActivityForm(false); }} className={btnSecondary}>Edit</button>
@@ -424,7 +424,7 @@ export default function CampDetailPage() {
               {showSeriesForm ? "Cancel" : "New series"}
             </button>
           </div>
-          <p className="text-sm text-gray-500 mb-4">Create a series first, then assign activities to it. Campers who pick one activity in a series are auto-enrolled in all others.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Create a series first, then assign activities to it. Campers who pick one activity in a series are auto-enrolled in all others.</p>
 
           {showSeriesForm && (
             <form className={formCard} onSubmit={e => { e.preventDefault(); handleCreate("/api/admin/series", seriesForm, () => { setSeriesForm(EMPTY_SERIES); setShowSeriesForm(false); loadSeries(); }); }}>
@@ -433,7 +433,7 @@ export default function CampDetailPage() {
             </form>
           )}
 
-          {series.length === 0 ? <p className="text-sm text-gray-500">No series yet.</p> : (
+          {series.length === 0 ? <p className="text-sm text-gray-500 dark:text-gray-400">No series yet.</p> : (
             <div className="space-y-2">
               {series.map(s => editingSeries?.id === s.id ? (
                 <form key={s.id} className={formCard} onSubmit={e => { e.preventDefault(); handleSave(`/api/admin/series/${s.id}`, editSeriesForm, () => { setEditingSeries(null); loadSeries(); }); }}>
@@ -447,8 +447,8 @@ export default function CampDetailPage() {
                 <div key={s.id} className={`${card} flex items-start justify-between`}>
                   <div>
                     <p className="font-medium">{s.name}</p>
-                    {s.description && <p className="text-sm text-gray-500">{s.description}</p>}
-                    {(() => { const linked = activities.filter(a => a.series_id === s.id); return linked.length > 0 ? <p className="text-sm text-gray-500">{linked.map(a => a.name).join(", ")}</p> : null; })()}
+                    {s.description && <p className="text-sm text-gray-500 dark:text-gray-400">{s.description}</p>}
+                    {(() => { const linked = activities.filter(a => a.series_id === s.id); return linked.length > 0 ? <p className="text-sm text-gray-500 dark:text-gray-400">{linked.map(a => a.name).join(", ")}</p> : null; })()}
                   </div>
                   <div className="flex gap-3 ml-4 shrink-0">
                     <button onClick={() => { setEditingSeries(s); setEditSeriesForm(seriesToForm(s)); setShowSeriesForm(false); }} className={btnSecondary}>Edit</button>

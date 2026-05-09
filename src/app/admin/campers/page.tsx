@@ -34,6 +34,13 @@ export default function CampersPage() {
   const [loadingCampers, setLoadingCampers] = useState(false);
   const [search, setSearch] = useState("");
 
+  // Selection mode
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [moveToCampId, setMoveToCampId] = useState("");
+  const [confirmBulkMove, setConfirmBulkMove] = useState(false);
+  const [movingBulk, setMovingBulk] = useState(false);
+
   useEffect(() => {
     fetch("/api/admin/camps")
       .then(r => r.json())
@@ -60,6 +67,54 @@ export default function CampersPage() {
     }
   }, [selectedCampId, showAll]);
 
+  function exitSelecting() {
+    setSelecting(false);
+    setSelected(new Set());
+    setMoveToCampId("");
+    setConfirmBulkMove(false);
+  }
+
+  function toggleSelect(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setConfirmBulkMove(false);
+    setMoveToCampId("");
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === filtered.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filtered.map(c => c.id)));
+    }
+    setConfirmBulkMove(false);
+    setMoveToCampId("");
+  }
+
+  async function executeBulkMove() {
+    if (!moveToCampId || selected.size === 0) return;
+    setMovingBulk(true);
+    await Promise.all(
+      Array.from(selected).map(camperId =>
+        fetch(`/api/admin/campers/${camperId}/move`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ camp_id: moveToCampId }),
+        })
+      )
+    );
+    setMovingBulk(false);
+    exitSelecting();
+    // Reload
+    const url = showAll ? "/api/admin/campers" : `/api/admin/campers?camp_id=${selectedCampId}`;
+    const data = await fetch(url).then(r => r.json());
+    setCampers(data);
+  }
+
   const filtered = campers.filter(c => {
     const q = search.toLowerCase();
     return (
@@ -69,13 +124,26 @@ export default function CampersPage() {
     );
   });
 
+  const destinationCamps = camps.filter(c => !c.archived && (showAll || c.id !== selectedCampId));
+  const allSelected = filtered.length > 0 && selected.size === filtered.length;
+
   return (
-    <div>
+    <div className="pb-32">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Campers</h1>
-        {!loadingCampers && (
-          <span className="text-sm text-gray-500">{campers.length} registered</span>
-        )}
+        <div className="flex items-center gap-3">
+          {!loadingCampers && (
+            <span className="text-sm text-gray-500">{campers.length} registered</span>
+          )}
+          {!loadingCampers && campers.length > 0 && (
+            <button
+              onClick={() => selecting ? exitSelecting() : setSelecting(true)}
+              className="text-sm text-gray-600 hover:text-gray-900 underline"
+            >
+              {selecting ? "Cancel" : "Select"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Camp selector / All toggle */}
@@ -84,7 +152,7 @@ export default function CampersPage() {
           {!showAll && (
             <select
               value={selectedCampId}
-              onChange={e => { setSelectedCampId(e.target.value); setSearch(""); }}
+              onChange={e => { setSelectedCampId(e.target.value); setSearch(""); exitSelecting(); }}
               className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black bg-white"
             >
               {camps.filter(c => !c.archived).map(c => (
@@ -95,7 +163,7 @@ export default function CampersPage() {
             </select>
           )}
           <button
-            onClick={() => { setShowAll(!showAll); setSearch(""); }}
+            onClick={() => { setShowAll(!showAll); setSearch(""); exitSelecting(); }}
             className="text-sm text-gray-600 hover:text-gray-900 underline"
           >
             {showAll ? "Filter by camp" : "All campers"}
@@ -119,32 +187,108 @@ export default function CampersPage() {
         </p>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
-          {filtered.map(c => (
-            <Link
-              key={c.id}
-              href={`/admin/campers/${c.id}`}
-              className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
+          {/* Select all row */}
+          {selecting && (
+            <button
+              onClick={toggleSelectAll}
+              className="w-full flex items-center gap-4 px-5 py-3 hover:bg-gray-50 text-sm text-gray-600"
             >
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900">
-                    {c.chosen_first_name} {c.chosen_last_name}
+              <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${allSelected ? "bg-black border-black" : "border-gray-300"}`}>
+                {allSelected && <span className="text-white text-xs">✓</span>}
+              </span>
+              {allSelected ? "Deselect all" : `Select all (${filtered.length})`}
+            </button>
+          )}
+
+          {filtered.map(c => {
+            const isSelected = selected.has(c.id);
+            const row = (
+              <div
+                key={c.id}
+                className={`flex items-center gap-4 px-5 py-4 transition-colors ${selecting ? "cursor-pointer hover:bg-gray-50" : ""} ${isSelected ? "bg-blue-50" : ""}`}
+                onClick={selecting ? () => toggleSelect(c.id) : undefined}
+              >
+                {selecting && (
+                  <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected ? "bg-black border-black" : "border-gray-300"}`}>
+                    {isSelected && <span className="text-white text-xs">✓</span>}
                   </span>
-                  {c.pronouns && (
-                    <span className="text-xs text-gray-400">({c.pronouns})</span>
-                  )}
-                </div>
-                <p className="text-sm text-gray-500">{c.email}</p>
-                {showAll && c.camps && (
-                  <p className="text-xs text-gray-400">{c.camps.name}</p>
                 )}
+                <div className="flex-1 flex items-center justify-between min-w-0">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900">
+                        {c.chosen_first_name} {c.chosen_last_name}
+                      </span>
+                      {c.pronouns && (
+                        <span className="text-xs text-gray-400">({c.pronouns})</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500">{c.email}</p>
+                    {showAll && c.camps && (
+                      <p className="text-xs text-gray-400">{c.camps.name}</p>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0 ml-4">
+                    <p className="text-sm text-gray-700">{c.tracks?.name ?? <span className="text-gray-400">No track</span>}</p>
+                    <p className="text-xs text-gray-400">{c.registrations.length} activit{c.registrations.length === 1 ? "y" : "ies"}</p>
+                  </div>
+                </div>
               </div>
-              <div className="text-right shrink-0 ml-4">
-                <p className="text-sm text-gray-700">{c.tracks?.name ?? <span className="text-gray-400">No track</span>}</p>
-                <p className="text-xs text-gray-400">{c.registrations.length} activit{c.registrations.length === 1 ? "y" : "ies"}</p>
-              </div>
-            </Link>
-          ))}
+            );
+
+            return selecting ? (
+              <div key={c.id}>{row}</div>
+            ) : (
+              <Link key={c.id} href={`/admin/campers/${c.id}`} className="block hover:bg-gray-50 transition-colors">
+                {row}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Sticky action bar */}
+      {selecting && selected.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg px-6 py-4">
+          <div className="max-w-5xl mx-auto flex flex-col gap-3">
+            <p className="text-sm font-medium text-gray-900">{selected.size} camper{selected.size === 1 ? "" : "s"} selected</p>
+            <div className="flex items-center gap-3 flex-wrap">
+              <select
+                value={moveToCampId}
+                onChange={e => { setMoveToCampId(e.target.value); setConfirmBulkMove(false); }}
+                className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black bg-white"
+              >
+                <option value="">Move to camp…</option>
+                {destinationCamps.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} — {formatDateRange(c.start_date, c.end_date)}{c.is_active ? " (active)" : ""}
+                  </option>
+                ))}
+              </select>
+
+              {moveToCampId && !confirmBulkMove && (
+                <button
+                  onClick={() => setConfirmBulkMove(true)}
+                  className="text-sm bg-black text-white px-4 py-2 rounded font-medium hover:bg-gray-800"
+                >
+                  Move
+                </button>
+              )}
+
+              {confirmBulkMove && (
+                <>
+                  <span className="text-sm text-amber-700">Clears all tracks and activities —</span>
+                  <button
+                    onClick={executeBulkMove}
+                    disabled={movingBulk}
+                    className="text-sm bg-black text-white px-4 py-2 rounded font-medium hover:bg-gray-800 disabled:opacity-50"
+                  >
+                    {movingBulk ? "Moving…" : "Confirm move"}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

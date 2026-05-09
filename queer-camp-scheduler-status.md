@@ -1,6 +1,6 @@
 # Queer Camp Scheduler - Project Status
 
-**Last Updated:** May 7, 2026
+**Last Updated:** May 8, 2026
 
 ## Project Overview
 
@@ -120,7 +120,7 @@ The org has a Google Workspace account at hello@queer.camp. We'll use SMTP throu
 
 ## Where We Are Now
 
-**Phase 1 MVP is built and running locally.** All core flows are implemented and pushed to GitHub. End-to-end QA and Vercel deployment are next.
+**Phase 1 MVP is complete and deployed.** Live at https://queer-camp-scheduler.vercel.app. Phase 2 (Admin Portal) is next.
 
 ### Schema Note
 The campers table was simplified after Phase 0: guardian and emergency contact fields were removed (RegFox owns that data). `chosen_name` was replaced with `chosen_first_name` + `chosen_last_name` (both required). Migration is at `migrations/001_simplify_campers.sql`.
@@ -129,19 +129,11 @@ The campers table was simplified after Phase 0: guardian and emergency contact f
 
 ### Immediate Next Session
 
-- [ ] Thorough end-to-end QA:
-  - Register a test camper at `/register`
-  - Confirm token link works at `/schedule?token=`
-  - Test `/get-link` email delivery (SMTP is wired, credentials in .env.local)
+- [ ] Remaining QA (lower priority now that prod is live):
   - Test edit mode on schedule page
   - Test "legal name same as chosen" checkbox behavior
   - Test workshop series auto-fill logic
   - Test capacity enforcement (fill a slot, verify others blocked)
-- [ ] Deploy to Vercel:
-  - Create Vercel account (sign in with Queer-camp GitHub org)
-  - Connect repo, set env vars (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, NEXT_PUBLIC_APP_URL)
-  - Set NEXT_PUBLIC_APP_URL to production domain
-  - Verify email links point to production URL
 
 ### Phase 1: MVP Build ✓
 
@@ -166,8 +158,8 @@ The campers table was simplified after Phase 0: guardian and emergency contact f
   - Personalized schedule display by day (track + activities)
   - Edit mode: same workshop picker pre-populated with current selections, delta-based save
   - Print-friendly (action buttons hidden via `print:hidden`)
-- [ ] Deploy to Vercel ← next
-- [ ] End-to-end QA ← next
+- [x] Deploy to Vercel — live at https://queer-camp-scheduler.vercel.app
+- [x] End-to-end QA (registration, magic link, email delivery confirmed in prod)
 
 ### Phase 2: Admin Portal
 
@@ -242,7 +234,7 @@ The campers table was simplified after Phase 0: guardian and emergency contact f
 | GitHub Org | Queer-camp (under hello@queer.camp) | ✓ Created |
 | Supabase | hello@queer.camp via GitHub | ✓ Project provisioned, schema deployed |
 | Google Workspace SMTP | hello@queer.camp | ✓ Credentials in .env.local, wired to Nodemailer |
-| Vercel | Not yet created | ⏳ Next session |
+| Vercel | Queer-camp GitHub org | ✓ Deployed at queer-camp-scheduler.vercel.app |
 
 ## Key Project URLs
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, FormEvent, ReactNode } from "react";
+import Image from "next/image";
 import type {
   ActivityWithSpots,
   TrackWithSpots,
@@ -45,6 +46,8 @@ const EMPTY_FORM: FormData = {
   email: "",
 };
 
+const RAINBOW = ["#d93025", "#f5810e", "#f5c23e", "#5dbb46", "#4b96f3", "#7c3aed", "#e879a8"] as const;
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function RegistrationForm({
@@ -54,9 +57,7 @@ export default function RegistrationForm({
   campName,
 }: Props) {
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
-  const [userSelections, setUserSelections] = useState<Record<string, string>>(
-    {}
-  );
+  const [userSelections, setUserSelections] = useState<Record<string, string>>({});
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -139,23 +140,51 @@ export default function RegistrationForm({
   if (confirmed) {
     const scheduleUrl = `${window.location.origin}/schedule?token=${confirmed.token}`;
     return (
-      <div className="max-w-xl mx-auto py-12 px-4">
-        <h1 className="text-2xl font-bold mb-3">
-          You&apos;re registered, {confirmed.displayName}!
-        </h1>
-        <p className="text-gray-700 mb-6">
-          Here&apos;s your personal schedule link. Bookmark it — this is how
-          you&apos;ll view and edit your workshops.
-        </p>
-        <div className="bg-gray-100 rounded p-4 font-mono text-sm break-all mb-6">
-          {scheduleUrl}
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 flex items-center justify-center px-4 py-16">
+        <div className="max-w-lg w-full text-center">
+          {/* Rainbow confetti bar */}
+          <div className="h-2 rounded-full mb-8" style={{ background: `linear-gradient(to right, ${RAINBOW.join(", ")})` }} />
+
+          <div
+            className="text-6xl mb-6 inline-block"
+            style={{ filter: "drop-shadow(0 2px 8px rgba(124,58,237,0.3))" }}
+          >
+            🎉
+          </div>
+
+          <h1 className="text-3xl font-bold mb-3">
+            You&apos;re in,{" "}
+            <span
+              style={{
+                background: `linear-gradient(to right, #e879a8, #7c3aed, #4b96f3)`,
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              {confirmed.displayName}!
+            </span>
+          </h1>
+          <p className="text-gray-600 mb-8 text-lg">
+            We&apos;re so excited to have you at {campName}. Here&apos;s your
+            personal schedule link — bookmark it to view and update your
+            workshops anytime.
+          </p>
+
+          <div className="bg-white rounded-xl border-2 border-purple-100 p-4 font-mono text-sm break-all mb-8 text-left text-gray-700 shadow-sm">
+            {scheduleUrl}
+          </div>
+
+          <a
+            href={scheduleUrl}
+            className="inline-block text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:opacity-90 transition-opacity"
+            style={{ background: `linear-gradient(to right, #e879a8, #7c3aed, #4b96f3)` }}
+          >
+            View your schedule →
+          </a>
+
+          <div className="h-2 rounded-full mt-8" style={{ background: `linear-gradient(to right, ${RAINBOW.join(", ")})` }} />
         </div>
-        <a
-          href={scheduleUrl}
-          className="inline-block bg-black text-white px-6 py-3 rounded font-semibold hover:bg-gray-800"
-        >
-          View your schedule →
-        </a>
       </div>
     );
   }
@@ -163,204 +192,262 @@ export default function RegistrationForm({
   // ── Form ───────────────────────────────────────────────────────────────────
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="max-w-xl mx-auto py-12 px-4 space-y-10"
-    >
-      <h1 className="text-3xl font-bold">Register for {campName}</h1>
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
+      {/* Rainbow banner */}
+      <div className="h-2" style={{ background: `linear-gradient(to right, ${RAINBOW.join(", ")})` }} />
 
-      {/* ── Identity ── */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold border-b pb-2">Your Info</h2>
-
-        {/* Chosen name — primary identity */}
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Chosen first name" required>
-            <input
-              type="text"
-              required
-              value={form.chosen_first_name}
-              onChange={(e) => set("chosen_first_name", e.target.value)}
-              className={input}
+      <form
+        onSubmit={handleSubmit}
+        className="max-w-2xl mx-auto py-12 px-4 space-y-10"
+      >
+        {/* ── Logo + Header ── */}
+        <div className="text-center space-y-4">
+          <div className="flex justify-center">
+            <Image
+              src="/queer-camp-logo.png"
+              alt="Queer Camp"
+              width={140}
+              height={140}
+              className="drop-shadow-md"
+              priority
             />
-          </Field>
-          <Field label="Chosen last name" required>
-            <input
-              type="text"
-              required
-              value={form.chosen_last_name}
-              onChange={(e) => set("chosen_last_name", e.target.value)}
-              className={input}
-            />
-          </Field>
+          </div>
+          <h1
+            className="text-4xl font-extrabold tracking-tight"
+            style={{
+              background: `linear-gradient(to right, #d93025, #f5810e, #f5c23e, #5dbb46, #4b96f3, #7c3aed, #e879a8)`,
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            Register for {campName}
+          </h1>
+          <p className="text-gray-500 text-base">
+            You belong here. Let&apos;s get you set up!
+          </p>
         </div>
 
-        {/* Legal name */}
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={form.legal_same_as_chosen}
-            onChange={(e) => set("legal_same_as_chosen", e.target.checked)}
-            className="w-4 h-4"
-          />
-          <span className="text-sm text-gray-700">
-            Legal name is the same as chosen name
-          </span>
-        </label>
+        {/* ── Identity ── */}
+        <Card color="#e879a8">
+          <SectionHeader color="#e879a8">Your Info</SectionHeader>
 
-        {!form.legal_same_as_chosen && (
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Legal first name" required>
+            <Field label="Chosen first name" required>
               <input
                 type="text"
                 required
-                value={form.legal_first_name}
-                onChange={(e) => set("legal_first_name", e.target.value)}
+                value={form.chosen_first_name}
+                onChange={(e) => set("chosen_first_name", e.target.value)}
                 className={input}
               />
             </Field>
-            <Field label="Legal last name" required>
+            <Field label="Chosen last name" required>
               <input
                 type="text"
                 required
-                value={form.legal_last_name}
-                onChange={(e) => set("legal_last_name", e.target.value)}
+                value={form.chosen_last_name}
+                onChange={(e) => set("chosen_last_name", e.target.value)}
                 className={input}
               />
             </Field>
           </div>
-        )}
 
-        <Field label="Pronouns">
-          <input
-            type="text"
-            placeholder="e.g. she/her, they/them, he/him"
-            value={form.pronouns}
-            onChange={(e) => set("pronouns", e.target.value)}
-            className={input}
-          />
-        </Field>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.legal_same_as_chosen}
+              onChange={(e) => set("legal_same_as_chosen", e.target.checked)}
+              className="w-4 h-4 accent-purple-600"
+            />
+            <span className="text-sm text-gray-600">
+              Legal name is the same as chosen name
+            </span>
+          </label>
 
-        <Field label="Email" required>
-          <input
-            type="email"
-            required
-            value={form.email}
-            onChange={(e) => set("email", e.target.value)}
-            className={input}
-          />
-        </Field>
-      </section>
+          {!form.legal_same_as_chosen && (
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Legal first name" required>
+                <input
+                  type="text"
+                  required
+                  value={form.legal_first_name}
+                  onChange={(e) => set("legal_first_name", e.target.value)}
+                  className={input}
+                />
+              </Field>
+              <Field label="Legal last name" required>
+                <input
+                  type="text"
+                  required
+                  value={form.legal_last_name}
+                  onChange={(e) => set("legal_last_name", e.target.value)}
+                  className={input}
+                />
+              </Field>
+            </div>
+          )}
 
-      {/* ── Track Selection ── */}
-      {tracks.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold border-b pb-2">
-            Morning Track
-          </h2>
-          <p className="text-sm text-gray-600">
-            Choose one track for your morning sessions.
-          </p>
-          <div className="space-y-2">
-            {tracks.map((track) => {
-              const isFull = track.spots_left <= 0;
-              const isSelected = selectedTrackId === track.id;
-              const isLow = track.spots_left > 0 && track.spots_left <= 3;
-              return (
-                <label
-                  key={track.id}
-                  className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
-                    isFull
-                      ? "opacity-50 cursor-not-allowed bg-gray-50"
-                      : isSelected
-                        ? "border-black bg-gray-50"
-                        : "border-gray-200 hover:border-gray-400"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="track"
-                    value={track.id}
-                    checked={isSelected}
-                    disabled={isFull}
-                    onChange={() => setSelectedTrackId(track.id)}
-                    className="mt-0.5"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm">
-                      {track.emoji ? `${track.emoji} ` : ""}
-                      {track.name}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      {formatTime(track.start_time)} –{" "}
-                      {formatTime(track.end_time)}
-                    </div>
-                    {track.description && (
-                      <div className="text-xs text-gray-600 mt-1">
-                        {track.description}
+          <Field label="Pronouns">
+            <input
+              type="text"
+              placeholder="e.g. she/her, they/them, he/him"
+              value={form.pronouns}
+              onChange={(e) => set("pronouns", e.target.value)}
+              className={input}
+            />
+          </Field>
+
+          <Field label="Email" required>
+            <input
+              type="email"
+              required
+              value={form.email}
+              onChange={(e) => set("email", e.target.value)}
+              className={input}
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              We&apos;ll send your personal schedule link here.
+            </p>
+          </Field>
+        </Card>
+
+        {/* ── Track Selection ── */}
+        {tracks.length > 0 && (
+          <Card color="#7c3aed">
+            <SectionHeader color="#7c3aed">Morning Track</SectionHeader>
+            <p className="text-sm text-gray-500 -mt-2">
+              Choose one track for your morning sessions.
+            </p>
+            <div className="space-y-2 mt-2">
+              {tracks.map((track) => {
+                const isFull = track.spots_left <= 0;
+                const isSelected = selectedTrackId === track.id;
+                const isLow = track.spots_left > 0 && track.spots_left <= 3;
+                return (
+                  <label
+                    key={track.id}
+                    className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      isFull
+                        ? "opacity-50 cursor-not-allowed bg-gray-50 border-gray-100"
+                        : isSelected
+                          ? "border-purple-400 bg-purple-50 shadow-sm"
+                          : "border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50/40"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="track"
+                      value={track.id}
+                      checked={isSelected}
+                      disabled={isFull}
+                      onChange={() => setSelectedTrackId(track.id)}
+                      className="mt-0.5 accent-purple-600"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm text-gray-800">
+                        {track.emoji ? `${track.emoji} ` : ""}
+                        {track.name}
                       </div>
-                    )}
-                    <div
-                      className={`text-xs mt-1 font-medium ${
-                        isFull
-                          ? "text-red-500"
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {formatTime(track.start_time)} –{" "}
+                        {formatTime(track.end_time)}
+                      </div>
+                      {track.description && (
+                        <div className="text-xs text-gray-600 mt-1">
+                          {track.description}
+                        </div>
+                      )}
+                      <div
+                        className={`text-xs mt-1 font-medium ${
+                          isFull
+                            ? "text-red-500"
+                            : isLow
+                              ? "text-amber-600"
+                              : "text-gray-400"
+                        }`}
+                      >
+                        {isFull
+                          ? "Full"
                           : isLow
-                            ? "text-amber-600"
-                            : "text-gray-400"
-                      }`}
-                    >
-                      {isFull
-                        ? "Full"
-                        : isLow
-                          ? `${track.spots_left} spot${track.spots_left === 1 ? "" : "s"} left!`
-                          : `${track.spots_left} spots left`}
+                            ? `${track.spots_left} spot${track.spots_left === 1 ? "" : "s"} left!`
+                            : `${track.spots_left} spots left`}
+                      </div>
                     </div>
-                  </div>
-                </label>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* ── Workshop Selection ── */}
-      <section className="space-y-6">
-        <h2 className="text-xl font-semibold border-b pb-2">
-          Workshop Selection
-        </h2>
-        {timeSlots.length === 0 ? (
-          <p className="text-sm text-gray-400">
-            No workshops have been added for this camp yet.
-          </p>
-        ) : (
-          <WorkshopSlots
-            timeSlots={timeSlots}
-            series={series}
-            activities={activities}
-            userSelections={userSelections}
-            effectiveSelections={effectiveSelections}
-            onSlotClick={handleSlotClick}
-          />
+                    {isSelected && (
+                      <span className="text-purple-500 text-lg mt-0.5">✓</span>
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+          </Card>
         )}
-      </section>
 
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+        {/* ── Workshop Selection ── */}
+        <Card color="#4b96f3">
+          <SectionHeader color="#4b96f3">Workshop Selection</SectionHeader>
+          {timeSlots.length === 0 ? (
+            <p className="text-sm text-gray-400">
+              No workshops have been added for this camp yet.
+            </p>
+          ) : (
+            <WorkshopSlots
+              timeSlots={timeSlots}
+              series={series}
+              activities={activities}
+              userSelections={userSelections}
+              effectiveSelections={effectiveSelections}
+              onSlotClick={handleSlotClick}
+            />
+          )}
+        </Card>
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full bg-black text-white py-3 px-6 rounded font-semibold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      >
-        {submitting ? "Registering…" : "Register"}
-      </button>
-    </form>
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full text-white py-4 px-6 rounded-full font-bold text-lg shadow-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+          style={{ background: `linear-gradient(to right, #e879a8, #7c3aed, #4b96f3)` }}
+        >
+          {submitting ? "Getting you registered…" : "Register for Camp 🏕️"}
+        </button>
+      </form>
+
+      {/* Rainbow footer bar */}
+      <div className="h-2" style={{ background: `linear-gradient(to right, ${RAINBOW.join(", ")})` }} />
+    </div>
   );
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const input =
-  "w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black";
+  "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-shadow";
+
+function Card({ children, color }: { children: ReactNode; color: string }) {
+  return (
+    <div
+      className="bg-white rounded-2xl shadow-sm p-6 space-y-4 border-t-4"
+      style={{ borderTopColor: color }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SectionHeader({ children, color }: { children: ReactNode; color: string }) {
+  return (
+    <h2 className="text-xl font-bold" style={{ color }}>
+      {children}
+    </h2>
+  );
+}
 
 function Field({
   label,
@@ -375,7 +462,7 @@ function Field({
     <div className="space-y-1">
       <label className="block text-sm font-medium text-gray-700">
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+        {required && <span className="text-pink-500 ml-1">*</span>}
       </label>
       {children}
     </div>

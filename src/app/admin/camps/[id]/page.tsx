@@ -7,7 +7,19 @@ import { formatTime } from "@/lib/format";
 
 type Tab = "tracks" | "activities" | "series";
 
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+function daysInRange(startDate: string, endDate: string): string[] {
+  const DOW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const start = new Date(startDate + "T00:00:00");
+  const end = new Date(endDate + "T00:00:00");
+  const diffDays = (end.getTime() - start.getTime()) / 86400000;
+  if (diffDays >= 6) return ALL_DAYS;
+  const available = new Set<string>();
+  const cur = new Date(start);
+  while (cur <= end) { available.add(DOW[cur.getDay()]); cur.setDate(cur.getDate() + 1); }
+  return ALL_DAYS.filter(d => available.has(d));
+}
 
 const EMPTY_TRACK = { name: "", description: "", capacity: "", start_time: "09:00", end_time: "12:00", emoji: "" };
 const EMPTY_ACTIVITY = { name: "", description: "", capacity: "", day: "", start_time: "09:00", end_time: "12:00", emoji: "", series_id: "" };
@@ -58,7 +70,7 @@ function parseDays(day: string): string[] {
   return day ? day.split(",").map(d => d.trim()).filter(Boolean) : [];
 }
 
-function DayPicker({ value, onChange }: { value: string; onChange: (day: string) => void }) {
+function DayPicker({ value, onChange, availableDays }: { value: string; onChange: (day: string) => void; availableDays: string[] }) {
   const selected = parseDays(value);
   function toggle(day: string) {
     const next = selected.includes(day) ? selected.filter(d => d !== day) : [...selected, day];
@@ -66,16 +78,24 @@ function DayPicker({ value, onChange }: { value: string; onChange: (day: string)
   }
   return (
     <div className="flex flex-wrap gap-1">
-      {DAYS.map(day => (
-        <button key={day} type="button" onClick={() => toggle(day)}
-          className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${
-            selected.includes(day)
-              ? "bg-black text-white border-black"
-              : "bg-white text-gray-700 border-gray-300 hover:border-gray-500"
-          }`}>
-          {day.slice(0, 3)}
-        </button>
-      ))}
+      {ALL_DAYS.map(day => {
+        const available = availableDays.includes(day);
+        const on = selected.includes(day);
+        return (
+          <button key={day} type="button" onClick={() => available && toggle(day)}
+            disabled={!available}
+            title={!available ? "This day is outside the camp date range" : undefined}
+            className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${
+              !available
+                ? "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed"
+                : on
+                  ? "bg-black text-white border-black"
+                  : "bg-white text-gray-700 border-gray-300 hover:border-gray-500"
+            }`}>
+            {day.slice(0, 3)}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -117,7 +137,7 @@ function TrackFormFields({ form, setForm }: { form: TrackForm; setForm: (f: Trac
   );
 }
 
-function ActivityFormFields({ form, setForm, series }: { form: ActivityForm; setForm: (f: ActivityForm) => void; series: ActivitySeries[] }) {
+function ActivityFormFields({ form, setForm, series, availableDays }: { form: ActivityForm; setForm: (f: ActivityForm) => void; series: ActivitySeries[]; availableDays: string[] }) {
   return (
     <div className="grid grid-cols-2 gap-3">
       <div className="col-span-2">
@@ -132,7 +152,7 @@ function ActivityFormFields({ form, setForm, series }: { form: ActivityForm; set
       </div>
       <div className="col-span-2">
         <label className="block text-sm font-medium mb-1">Days</label>
-        <DayPicker value={form.day} onChange={day => setForm({ ...form, day })} />
+        <DayPicker value={form.day} onChange={day => setForm({ ...form, day })} availableDays={availableDays} />
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">Start time</label>
@@ -196,6 +216,8 @@ function seriesToForm(s: ActivitySeries): SeriesForm {
 export default function CampDetailPage() {
   const { id: campId } = useParams<{ id: string }>();
   const [tab, setTab] = useState<Tab>("tracks");
+  const [campName, setCampName] = useState("");
+  const [availableDays, setAvailableDays] = useState<string[]>(ALL_DAYS);
 
   const [tracks, setTracks] = useState<Track[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -232,7 +254,13 @@ export default function CampDetailPage() {
     if (res.ok) setSeries(await res.json());
   }
 
-  useEffect(() => { loadTracks(); loadActivities(); loadSeries(); }, [campId]);
+  useEffect(() => {
+    fetch(`/api/admin/camps`).then(r => r.json()).then((camps: { id: string; name: string; start_date: string; end_date: string }[]) => {
+      const camp = camps.find(c => c.id === campId);
+      if (camp) { setCampName(camp.name); setAvailableDays(daysInRange(camp.start_date, camp.end_date)); }
+    });
+    loadTracks(); loadActivities(); loadSeries();
+  }, [campId]);
 
   async function handleCreate(url: string, body: object, onSuccess: () => void) {
     setSaving(true); setError(null);
@@ -271,6 +299,7 @@ export default function CampDetailPage() {
     <div>
       <div className="mb-6">
         <a href="/admin/camps" className="text-sm text-gray-500 hover:text-gray-900">← Camps</a>
+        {campName && <h1 className="text-xl font-bold mt-2">{campName}</h1>}
       </div>
 
       <div className="flex gap-0 border-b border-gray-200 mb-6">
@@ -342,7 +371,7 @@ export default function CampDetailPage() {
               if (!activityForm.day) { setError("Please select at least one day."); return; }
               handleCreate("/api/admin/activities", activityForm, () => { setActivityForm(EMPTY_ACTIVITY); setShowActivityForm(false); loadActivities(); });
             }}>
-              <ActivityFormFields form={activityForm} setForm={setActivityForm} series={series} />
+              <ActivityFormFields form={activityForm} setForm={setActivityForm} series={series} availableDays={availableDays} />
               <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Creating…" : "Create activity"}</button>
             </form>
           )}
@@ -355,7 +384,7 @@ export default function CampDetailPage() {
                   if (!editActivityForm.day) { setError("Please select at least one day."); return; }
                   handleSave(`/api/admin/activities/${a.id}`, editActivityForm, () => { setEditingActivity(null); loadActivities(); });
                 }}>
-                  <ActivityFormFields form={editActivityForm} setForm={setEditActivityForm} series={series} />
+                  <ActivityFormFields form={editActivityForm} setForm={setEditActivityForm} series={series} availableDays={availableDays} />
                   <div className="flex gap-2">
                     <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Saving…" : "Save"}</button>
                     <button type="button" onClick={() => setEditingActivity(null)} className={btnSecondary}>Cancel</button>

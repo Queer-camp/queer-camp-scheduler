@@ -1,0 +1,33 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase";
+import { requireAdmin } from "@/lib/admin-auth";
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!await requireAdmin(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("campers")
+    .select(`
+      id, chosen_first_name, chosen_last_name, legal_first_name, legal_last_name,
+      pronouns, email, track_id, camp_id, created_at,
+      tracks ( id, name, start_time, end_time ),
+      registrations (
+        id,
+        activities ( id, name, day, start_time, end_time, emoji )
+      )
+    `)
+    .eq("id", id)
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(data);
+}

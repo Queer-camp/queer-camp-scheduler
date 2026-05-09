@@ -1,11 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function AdminLoginPage() {
+function ErrorMessage() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
+
+  if (error === "expired") {
+    return (
+      <p className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">
+        That login link has expired. Request a new one.
+      </p>
+    );
+  }
+  if (error === "invalid") {
+    return (
+      <p className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">
+        Invalid login link. Request a new one.
+      </p>
+    );
+  }
+  return null;
+}
+
+export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -41,16 +60,9 @@ export default function AdminLoginPage() {
         <h1 className="text-2xl font-bold mb-2">Admin Login</h1>
         <p className="text-gray-600 mb-6">Queer Camp Scheduler</p>
 
-        {error === "expired" && (
-          <p className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">
-            That login link has expired. Request a new one.
-          </p>
-        )}
-        {error === "invalid" && (
-          <p className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">
-            Invalid login link. Request a new one.
-          </p>
-        )}
+        <Suspense>
+          <ErrorMessage />
+        </Suspense>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

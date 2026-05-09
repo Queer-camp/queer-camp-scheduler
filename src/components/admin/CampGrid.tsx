@@ -687,7 +687,7 @@ export function CampGrid({ tracks, activities, series, availableDays, campId, on
                     return (
                       <div key={track.id}
                         style={{ position: "absolute", top, height, left: 2, right: 2, zIndex: 2 }}
-                        className="rounded-md border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900/40 px-1.5 py-1 overflow-hidden cursor-pointer hover:brightness-95 transition-[filter]"
+                        className="rounded-md border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900 px-1.5 py-1 overflow-hidden cursor-pointer hover:brightness-95 transition-[filter]"
                         onClick={e => { e.stopPropagation(); setPopover({ kind: "track", x: e.clientX, y: e.clientY, track }); }}>
                         <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 truncate leading-tight">
                           {track.emoji ? `${track.emoji} ` : ""}{track.name}
@@ -716,7 +716,7 @@ export function CampGrid({ tracks, activities, series, availableDays, campId, on
                           width: `calc(${widthPct}% - 4px)`,
                           zIndex: 3,
                         }}
-                        className="rounded-md border border-purple-300 dark:border-purple-700 bg-purple-100 dark:bg-purple-900/40 px-1.5 py-1 overflow-hidden cursor-pointer hover:brightness-95 transition-[filter]"
+                        className="rounded-md border border-purple-300 dark:border-purple-700 bg-purple-100 dark:bg-purple-900 px-1.5 py-1 overflow-hidden cursor-pointer hover:brightness-95 transition-[filter]"
                         onClick={e => { e.stopPropagation(); setPopover({ kind: "activity", x: e.clientX, y: e.clientY, activity }); }}>
                         <p className="text-xs font-semibold text-purple-900 dark:text-purple-100 truncate leading-tight">
                           {activity.emoji ? `${activity.emoji} ` : ""}{activity.name}

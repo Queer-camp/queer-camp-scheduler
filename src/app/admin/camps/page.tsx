@@ -119,7 +119,11 @@ export default function CampsPage() {
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <Link href={`/admin/camps/${camp.id}`} className={`font-medium hover:underline ${past || camp.archived ? "text-gray-400" : ""}`}>{camp.name}</Link>
-            {camp.is_active && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Active</span>}
+            {camp.is_active ? (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Active</span>
+            ) : (
+              !camp.archived && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Draft</span>
+            )}
             {past && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Past</span>}
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${camp.registration_open ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>
               {camp.registration_open ? "Registration open" : "Registration closed"}
@@ -134,7 +138,11 @@ export default function CampsPage() {
           <button onClick={() => patch(camp, { registration_open: !camp.registration_open })} className="text-sm text-gray-600 hover:text-gray-900 underline">
             {camp.registration_open ? "Close reg" : "Open reg"}
           </button>
-          {!camp.is_active && (
+          {camp.is_active ? (
+            <button onClick={() => patch(camp, { is_active: false })} className="text-sm text-gray-600 hover:text-gray-900 underline">
+              Set draft
+            </button>
+          ) : (
             <button onClick={() => patch(camp, { is_active: true })} className="text-sm text-gray-600 hover:text-gray-900 underline">
               Set active
             </button>

@@ -32,6 +32,7 @@ export interface Track {
   start_time: string;
   end_time: string;
   emoji: string | null;
+  location: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -54,6 +55,7 @@ export interface Activity {
   start_time: string;
   end_time: string;
   emoji: string | null;
+  location: string | null;
   series_id: string | null;
   created_at: string;
   updated_at: string;

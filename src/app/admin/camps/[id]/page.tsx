@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import type { Track, Activity, ActivitySeries } from "@/types/database";
 import { formatTime } from "@/lib/format";
 import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut";
 import { ShortcutBadge } from "@/components/admin/ShortcutBadge";
+import { CampGrid } from "@/components/admin/CampGrid";
+import type { RosterTarget as GridRosterTarget } from "@/components/admin/CampGrid";
 
-type Tab = "tracks" | "activities" | "series";
+type Tab = "tracks" | "activities" | "series" | "grid";
 
 type RosterTarget = { type: "track" | "activity"; id: string; name: string; capacity: number };
 type RosterCamper = { id: string; chosen_first_name: string; chosen_last_name: string; pronouns: string | null; registration_id?: string; current_track_name?: string | null };
@@ -27,8 +29,8 @@ function daysInRange(startDate: string, endDate: string): string[] {
   return ALL_DAYS.filter(d => available.has(d));
 }
 
-const EMPTY_TRACK = { name: "", description: "", capacity: "", start_time: "09:00", end_time: "12:00", emoji: "" };
-const EMPTY_ACTIVITY = { name: "", description: "", capacity: "", day: "", start_time: "09:00", end_time: "12:00", emoji: "", series_id: "" };
+const EMPTY_TRACK = { name: "", description: "", capacity: "", start_time: "09:00", end_time: "12:00", emoji: "", location: "" };
+const EMPTY_ACTIVITY = { name: "", description: "", capacity: "", day: "", start_time: "09:00", end_time: "12:00", emoji: "", series_id: "", location: "" };
 const EMPTY_SERIES = { name: "", description: "" };
 
 type TrackForm = typeof EMPTY_TRACK;
@@ -117,6 +119,11 @@ function TrackFormFields({ form, setForm }: { form: TrackForm; setForm: (f: Trac
           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Morning Track A" />
       </div>
       <div className="col-span-2">
+        <label className="block text-sm font-medium mb-1">Location <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
+        <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Room 4, Pavilion…" />
+      </div>
+      <div className="col-span-2">
         <label className="block text-sm font-medium mb-1">Description <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
         <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" />
@@ -150,6 +157,11 @@ function ActivityFormFields({ form, setForm, series, availableDays }: { form: Ac
         <label className="block text-sm font-medium mb-1">Name</label>
         <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Pottery" />
+      </div>
+      <div className="col-span-2">
+        <label className="block text-sm font-medium mb-1">Location <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
+        <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Room 4, Pavilion…" />
       </div>
       <div className="col-span-2">
         <label className="block text-sm font-medium mb-1">Description <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
@@ -208,10 +220,10 @@ function SeriesFormFields({ form, setForm }: { form: SeriesForm; setForm: (f: Se
 }
 
 function trackToForm(t: Track): TrackForm {
-  return { name: t.name, description: t.description ?? "", capacity: String(t.capacity), start_time: t.start_time, end_time: t.end_time, emoji: t.emoji ?? "" };
+  return { name: t.name, description: t.description ?? "", capacity: String(t.capacity), start_time: t.start_time, end_time: t.end_time, emoji: t.emoji ?? "", location: t.location ?? "" };
 }
 function activityToForm(a: Activity): ActivityForm {
-  return { name: a.name, description: a.description ?? "", capacity: String(a.capacity), day: a.day, start_time: a.start_time, end_time: a.end_time, emoji: a.emoji ?? "", series_id: a.series_id ?? "" };
+  return { name: a.name, description: a.description ?? "", capacity: String(a.capacity), day: a.day, start_time: a.start_time, end_time: a.end_time, emoji: a.emoji ?? "", series_id: a.series_id ?? "", location: a.location ?? "" };
 }
 function seriesToForm(s: ActivitySeries): SeriesForm {
   return { name: s.name, description: s.description ?? "" };
@@ -230,6 +242,7 @@ export default function CampDetailPage() {
   useKeyboardShortcut("1", () => setTab("tracks"));
   useKeyboardShortcut("2", () => setTab("activities"));
   useKeyboardShortcut("3", () => setTab("series"));
+  useKeyboardShortcut("4", () => setTab("grid"));
   const [availableDays, setAvailableDays] = useState<string[]>(ALL_DAYS);
 
   const [tracks, setTracks] = useState<TrackWithCount[]>([]);
@@ -262,6 +275,16 @@ export default function CampDetailPage() {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
+  const newMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (newMenuRef.current && !newMenuRef.current.contains(e.target as Node)) setNewMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
 
   async function loadTracks() {
     const res = await fetch(`/api/admin/tracks?camp_id=${campId}`);
@@ -457,15 +480,36 @@ export default function CampDetailPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <a href="/admin/camps" className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">← Camps</a>
-        {campName && <h1 className="text-xl font-bold mt-2">{campName}</h1>}
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <a href="/admin/camps" className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">← Camps</a>
+          {campName && <h1 className="text-xl font-bold mt-2">{campName}</h1>}
+        </div>
+        <div className="relative shrink-0 mt-1" ref={newMenuRef}>
+          <button onClick={() => setNewMenuOpen(o => !o)}
+            className="flex items-center gap-1.5 bg-black text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-gray-800">
+            + New <span className="opacity-60 text-xs">▾</span>
+          </button>
+          {newMenuOpen && (
+            <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20 min-w-36 overflow-hidden">
+              <button onClick={() => { setNewMenuOpen(false); setTab("tracks"); setShowTrackForm(true); setEditingTrack(null); }}
+                className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200">
+                New Track
+              </button>
+              <button onClick={() => { setNewMenuOpen(false); setTab("activities"); setShowActivityForm(true); setEditingActivity(null); }}
+                className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 border-t border-gray-100 dark:border-gray-800">
+                New Activity
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-0 border-b border-gray-200 dark:border-gray-700 mb-6">
         <button className={TAB("tracks")} onClick={() => setTab("tracks")}>Tracks<ShortcutBadge>1</ShortcutBadge></button>
         <button className={TAB("activities")} onClick={() => setTab("activities")}>Activities<ShortcutBadge>2</ShortcutBadge></button>
         <button className={TAB("series")} onClick={() => setTab("series")}>Series<ShortcutBadge>3</ShortcutBadge></button>
+        <button className={TAB("grid")} onClick={() => setTab("grid")}>Grid<ShortcutBadge>4</ShortcutBadge></button>
       </div>
 
       {error && <p className="mb-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-3 rounded">{error}</p>}
@@ -502,6 +546,7 @@ export default function CampDetailPage() {
                   <div className="space-y-1">
                     <p className="font-medium">{t.emoji ? `${t.emoji} ` : ""}{t.name}</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">{formatTime(t.start_time)} – {formatTime(t.end_time)}</p>
+                    {t.location && <p className="text-sm text-gray-500 dark:text-gray-400">📍 {t.location}</p>}
                     {t.description && <p className="text-sm text-gray-500 dark:text-gray-400">{t.description}</p>}
                     <EnrollCount enrolled={t.enrolled} capacity={t.capacity} />
                   </div>
@@ -557,6 +602,7 @@ export default function CampDetailPage() {
                   <div className="space-y-1">
                     <p className="font-medium">{a.emoji ? `${a.emoji} ` : ""}{a.name}</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">{formatDays(a.day)} · {formatTime(a.start_time)} – {formatTime(a.end_time)}</p>
+                    {a.location && <p className="text-sm text-gray-500 dark:text-gray-400">📍 {a.location}</p>}
                     {a.series_id && <p className="text-sm text-gray-500 dark:text-gray-400">Series: {series.find(s => s.id === a.series_id)?.name ?? "—"}</p>}
                     {a.description && <p className="text-sm text-gray-500 dark:text-gray-400">{a.description}</p>}
                     <EnrollCount enrolled={a.enrolled} capacity={a.capacity} />
@@ -571,6 +617,19 @@ export default function CampDetailPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* ── GRID ── */}
+      {tab === "grid" && (
+        <CampGrid
+          tracks={tracks}
+          activities={activities}
+          series={series}
+          availableDays={availableDays}
+          campId={campId}
+          onUpdate={() => { loadTracks(); loadActivities(); }}
+          onOpenRoster={openRoster}
+        />
       )}
 
       {/* ── ROSTER PANEL ── */}

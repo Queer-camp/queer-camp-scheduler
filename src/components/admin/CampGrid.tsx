@@ -1,0 +1,764 @@
+"use client";
+
+import { useState, useRef, useEffect, useCallback } from "react";
+import type { Track, Activity, ActivitySeries } from "@/types/database";
+import { formatTime } from "@/lib/format";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type TrackWithCount = Track & { enrolled: number };
+type ActivityWithCount = Activity & { enrolled: number };
+export type RosterTarget = { type: "track" | "activity"; id: string; name: string; capacity: number };
+
+type PopoverState =
+  | { kind: "create"; x: number; y: number; prefillStart: string; prefillEnd: string; prefillDay: string | null }
+  | { kind: "track"; x: number; y: number; track: TrackWithCount }
+  | { kind: "activity"; x: number; y: number; activity: ActivityWithCount };
+
+interface CampGridProps {
+  tracks: TrackWithCount[];
+  activities: ActivityWithCount[];
+  series: ActivitySeries[];
+  availableDays: string[];
+  campId: string;
+  onUpdate: () => void;
+  onOpenRoster: (target: RosterTarget) => void;
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const SLOT_HEIGHT = 48; // px per 30-min slot
+const GRID_START = 8 * 60; // 8:00 AM in minutes
+const GRID_END = 20 * 60;  // 8:00 PM in minutes
+const POPOVER_WIDTH = 320;
+
+const ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function timeToMins(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function minsToTime(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function parseDays(day: string): string[] {
+  return day ? day.split(",").map(d => d.trim()).filter(Boolean) : [];
+}
+
+function timeToY(mins: number): number {
+  return Math.max(0, ((mins - GRID_START) / 30) * SLOT_HEIGHT);
+}
+
+function yToMins(y: number): number {
+  return Math.round((GRID_START + (y / SLOT_HEIGHT) * 30) / 30) * 30;
+}
+
+const timeSlots: number[] = [];
+for (let m = GRID_START; m <= GRID_END; m += 30) timeSlots.push(m);
+
+const TOTAL_HEIGHT = timeToY(GRID_END);
+
+// Compute non-overlapping column positions for items in the same day+time
+function computeColumns(items: { id: string; start: number; end: number }[]): Record<string, { col: number; cols: number }> {
+  const sorted = [...items].sort((a, b) => a.start - b.start);
+  const result: Record<string, { col: number; cols: number }> = {};
+  const groups: string[][] = [];
+
+  for (const item of sorted) {
+    let placed = false;
+    for (const group of groups) {
+      const lastInGroup = group[group.length - 1];
+      const last = sorted.find(i => i.id === lastInGroup)!;
+      if (last.end <= item.start) {
+        group.push(item.id);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) groups.push([item.id]);
+  }
+
+  const totalCols = groups.length;
+  groups.forEach((group, col) => {
+    group.forEach(id => { result[id] = { col, cols: totalCols }; });
+  });
+
+  return result;
+}
+
+// ── TimePicker ────────────────────────────────────────────────────────────────
+
+function to12h(time: string) {
+  const [h, m] = time ? time.split(":").map(Number) : [9, 0];
+  return { hour: h % 12 || 12, minute: m, ampm: (h >= 12 ? "PM" : "AM") as "AM" | "PM" };
+}
+function to24h(hour: number, minute: number, ampm: "AM" | "PM") {
+  const h = (hour % 12) + (ampm === "PM" ? 12 : 0);
+  return `${String(h).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function TimePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { hour, minute, ampm } = to12h(value);
+  const update = (h: number, m: number, ap: "AM" | "PM") => onChange(to24h(h, m, ap));
+  const cls = "border border-gray-300 dark:border-gray-600 rounded px-1.5 py-1 text-xs dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-400";
+  return (
+    <div className="flex items-center gap-1">
+      <select value={hour} onChange={e => update(+e.target.value, minute, ampm)} className={cls}>
+        {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => <option key={h} value={h}>{h}</option>)}
+      </select>
+      <span className="text-xs text-gray-400 dark:text-gray-500">:</span>
+      <select value={minute} onChange={e => update(hour, +e.target.value, ampm)} className={cls}>
+        {Array.from({ length: 60 }, (_, i) => i).map(m => (
+          <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
+        ))}
+      </select>
+      <select value={ampm} onChange={e => update(hour, minute, e.target.value as "AM" | "PM")} className={cls}>
+        <option value="AM">AM</option>
+        <option value="PM">PM</option>
+      </select>
+    </div>
+  );
+}
+
+// ── DayPicker (mini) ──────────────────────────────────────────────────────────
+
+function MiniDayPicker({ value, onChange, availableDays }: { value: string; onChange: (v: string) => void; availableDays: string[] }) {
+  const selected = parseDays(value);
+  function toggle(day: string) {
+    const next = selected.includes(day) ? selected.filter(d => d !== day) : [...selected, day];
+    onChange(next.join(","));
+  }
+  return (
+    <div className="flex flex-wrap gap-1">
+      {ALL_DAYS.map(day => {
+        const available = availableDays.includes(day);
+        const on = selected.includes(day);
+        return (
+          <button key={day} type="button" onClick={() => available && toggle(day)} disabled={!available}
+            className={`px-1.5 py-0.5 rounded text-xs font-medium border transition-colors ${
+              !available ? "opacity-30 cursor-not-allowed border-gray-200 dark:border-gray-700 text-gray-400" :
+              on ? "bg-purple-600 text-white border-purple-600" :
+              "border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-gray-500"
+            }`}>
+            {day.slice(0, 2)}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Popover shell ─────────────────────────────────────────────────────────────
+
+function Popover({ x, y, onClose, children }: { x: number; y: number; onClose: () => void; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Adjust position to stay on screen
+  const [pos, setPos] = useState({ left: x, top: y });
+  useEffect(() => {
+    if (!ref.current) return;
+    const { width, height } = ref.current.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let left = x + 8;
+    let top = y - 8;
+    if (left + width > vw - 16) left = x - width - 8;
+    if (top + height > vh - 16) top = vh - height - 16;
+    if (top < 8) top = 8;
+    if (left < 8) left = 8;
+    setPos({ left, top });
+  }, [x, y]);
+
+  // Close on outside click
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [onClose]);
+
+  // Close on Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div ref={ref} style={{ position: "fixed", left: pos.left, top: pos.top, zIndex: 60, width: POPOVER_WIDTH }}
+      className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden">
+      {children}
+    </div>
+  );
+}
+
+// ── Field helpers ─────────────────────────────────────────────────────────────
+
+const inputCls = "w-full border border-gray-300 dark:border-gray-600 rounded px-2.5 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-400";
+const labelCls = "block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5";
+
+// ── Create Popover ────────────────────────────────────────────────────────────
+
+const EMPTY_CREATE = {
+  itemType: "activity" as "track" | "activity",
+  name: "", emoji: "", location: "", description: "",
+  day: "", start_time: "09:00", end_time: "10:00", capacity: "15", series_id: "",
+};
+
+function CreatePopover({
+  x, y, prefillStart, prefillEnd, prefillDay,
+  availableDays, series, campId, onClose, onCreated,
+}: {
+  x: number; y: number; prefillStart: string; prefillEnd: string; prefillDay: string | null;
+  availableDays: string[]; series: ActivitySeries[]; campId: string;
+  onClose: () => void; onCreated: () => void;
+}) {
+  const [form, setForm] = useState({
+    ...EMPTY_CREATE,
+    start_time: prefillStart,
+    end_time: prefillEnd,
+    day: prefillDay ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { nameRef.current?.focus(); }, []);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.name.trim()) { setError("Name is required."); return; }
+    if (form.itemType === "activity" && !form.day) { setError("Select at least one day."); return; }
+    setSaving(true); setError(null);
+    const url = form.itemType === "track" ? "/api/admin/tracks" : "/api/admin/activities";
+    const body = form.itemType === "track"
+      ? { camp_id: campId, name: form.name, emoji: form.emoji, location: form.location, description: form.description, capacity: form.capacity, start_time: form.start_time, end_time: form.end_time }
+      : { camp_id: campId, name: form.name, emoji: form.emoji, location: form.location, description: form.description, capacity: form.capacity, start_time: form.start_time, end_time: form.end_time, day: form.day, series_id: form.series_id };
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (res.ok) { onCreated(); onClose(); }
+    else { const d = await res.json(); setError(d.error ?? "Failed to create."); }
+    setSaving(false);
+  }
+
+  const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  return (
+    <Popover x={x} y={y} onClose={onClose}>
+      <form onSubmit={submit}>
+        {/* Header */}
+        <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex gap-1 p-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg">
+              {(["activity", "track"] as const).map(t => (
+                <button key={t} type="button" onClick={() => set("itemType", t)}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                    form.itemType === t ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500 dark:text-gray-400 hover:text-gray-700"
+                  }`}>
+                  {t === "track" ? "Track" : "Activity"}
+                </button>
+              ))}
+            </div>
+            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none">✕</button>
+          </div>
+
+          <div className="flex gap-2">
+            <input value={form.emoji} onChange={e => set("emoji", e.target.value)} placeholder="✦"
+              className="w-12 text-center border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-400" />
+            <input ref={nameRef} required value={form.name} onChange={e => set("name", e.target.value)}
+              placeholder={form.itemType === "track" ? "Track name…" : "Activity name…"}
+              className={inputCls} />
+          </div>
+        </div>
+
+        {/* Fields */}
+        <div className="px-4 py-3 space-y-3">
+          <div>
+            <label className={labelCls}>Location</label>
+            <input value={form.location} onChange={e => set("location", e.target.value)} placeholder="Room 4, Gym, Pavilion…" className={inputCls} />
+          </div>
+
+          {form.itemType === "activity" && (
+            <div>
+              <label className={labelCls}>Days</label>
+              <MiniDayPicker value={form.day} onChange={v => set("day", v)} availableDays={availableDays} />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={labelCls}>Start</label>
+              <TimePicker value={form.start_time} onChange={v => set("start_time", v)} />
+            </div>
+            <div>
+              <label className={labelCls}>End</label>
+              <TimePicker value={form.end_time} onChange={v => set("end_time", v)} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={labelCls}>Capacity</label>
+              <input required type="number" min="1" value={form.capacity} onChange={e => set("capacity", e.target.value)} className={inputCls} />
+            </div>
+            {form.itemType === "activity" && series.length > 0 && (
+              <div>
+                <label className={labelCls}>Series</label>
+                <select value={form.series_id} onChange={e => set("series_id", e.target.value)}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded px-2.5 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-400">
+                  <option value="">None</option>
+                  {series.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className={labelCls}>Description <span className="font-normal opacity-60">(optional)</span></label>
+            <input value={form.description} onChange={e => set("description", e.target.value)} className={inputCls} />
+          </div>
+
+          {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+        </div>
+
+        {/* Footer */}
+        <div className="px-4 pb-4 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">Cancel</button>
+          <button type="submit" disabled={saving}
+            className="px-4 py-1.5 text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white rounded-lg disabled:opacity-50 transition-colors">
+            {saving ? "Creating…" : `Create ${form.itemType}`}
+          </button>
+        </div>
+      </form>
+    </Popover>
+  );
+}
+
+// ── Track Detail Popover ──────────────────────────────────────────────────────
+
+function TrackPopover({
+  x, y, track, onClose, onUpdate, onOpenRoster,
+}: {
+  x: number; y: number; track: TrackWithCount;
+  onClose: () => void; onUpdate: () => void; onOpenRoster: (t: RosterTarget) => void;
+}) {
+  const [form, setForm] = useState({
+    name: track.name,
+    emoji: track.emoji ?? "",
+    location: track.location ?? "",
+    description: track.description ?? "",
+    start_time: track.start_time,
+    end_time: track.end_time,
+    capacity: String(track.capacity),
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const pct = Math.min(track.enrolled / track.capacity, 1);
+  const barColor = pct >= 1 ? "bg-red-500" : pct >= 0.8 ? "bg-yellow-500" : "bg-green-500";
+
+  const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true); setError(null);
+    const res = await fetch(`/api/admin/tracks/${track.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: form.name, emoji: form.emoji, location: form.location, description: form.description, start_time: form.start_time, end_time: form.end_time, capacity: Number(form.capacity) }),
+    });
+    if (res.ok) { onUpdate(); onClose(); }
+    else { const d = await res.json(); setError(d.error ?? "Failed to save."); }
+    setSaving(false);
+  }
+
+  async function del() {
+    if (!confirm(`Delete track "${track.name}"? Campers assigned to it will lose their track assignment.`)) return;
+    await fetch(`/api/admin/tracks/${track.id}`, { method: "DELETE" });
+    onUpdate(); onClose();
+  }
+
+  return (
+    <Popover x={x} y={y} onClose={onClose}>
+      <form onSubmit={save}>
+        {/* Header */}
+        <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">Track</span>
+            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none">✕</button>
+          </div>
+          <div className="flex gap-2 mb-2">
+            <input value={form.emoji} onChange={e => set("emoji", e.target.value)} placeholder="✦"
+              className="w-12 text-center border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+            <input required value={form.name} onChange={e => set("name", e.target.value)} className={inputCls} />
+          </div>
+          {/* Capacity bar */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${pct * 100}%` }} />
+            </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{track.enrolled}/{track.capacity}</span>
+          </div>
+        </div>
+
+        {/* Fields */}
+        <div className="px-4 py-3 space-y-3">
+          <div>
+            <label className={labelCls}>Location</label>
+            <input value={form.location} onChange={e => set("location", e.target.value)} placeholder="Room, building…" className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={labelCls}>Start</label>
+              <TimePicker value={form.start_time} onChange={v => set("start_time", v)} />
+            </div>
+            <div>
+              <label className={labelCls}>End</label>
+              <TimePicker value={form.end_time} onChange={v => set("end_time", v)} />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Capacity</label>
+            <input required type="number" min="1" value={form.capacity} onChange={e => set("capacity", e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Description <span className="font-normal opacity-60">(optional)</span></label>
+            <input value={form.description} onChange={e => set("description", e.target.value)} className={inputCls} />
+          </div>
+          {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+        </div>
+
+        {/* Footer */}
+        <div className="px-4 pb-4 flex items-center justify-between">
+          <div className="flex gap-3">
+            <button type="button" onClick={() => { onOpenRoster({ type: "track", id: track.id, name: track.name, capacity: track.capacity }); onClose(); }}
+              className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-medium">Roster</button>
+            <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline">Delete</button>
+          </div>
+          <button type="submit" disabled={saving}
+            className="px-4 py-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 transition-colors">
+            {saving ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </form>
+    </Popover>
+  );
+}
+
+// ── Activity Detail Popover ───────────────────────────────────────────────────
+
+function ActivityPopover({
+  x, y, activity, availableDays, series, onClose, onUpdate, onOpenRoster,
+}: {
+  x: number; y: number; activity: ActivityWithCount;
+  availableDays: string[]; series: ActivitySeries[];
+  onClose: () => void; onUpdate: () => void; onOpenRoster: (t: RosterTarget) => void;
+}) {
+  const [form, setForm] = useState({
+    name: activity.name,
+    emoji: activity.emoji ?? "",
+    location: activity.location ?? "",
+    description: activity.description ?? "",
+    day: activity.day,
+    start_time: activity.start_time,
+    end_time: activity.end_time,
+    capacity: String(activity.capacity),
+    series_id: activity.series_id ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const pct = Math.min(activity.enrolled / activity.capacity, 1);
+  const barColor = pct >= 1 ? "bg-red-500" : pct >= 0.8 ? "bg-yellow-500" : "bg-green-500";
+
+  const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.day) { setError("Select at least one day."); return; }
+    setSaving(true); setError(null);
+    const res = await fetch(`/api/admin/activities/${activity.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: form.name, emoji: form.emoji, location: form.location, description: form.description, day: form.day, start_time: form.start_time, end_time: form.end_time, capacity: Number(form.capacity), series_id: form.series_id || null }),
+    });
+    if (res.ok) { onUpdate(); onClose(); }
+    else { const d = await res.json(); setError(d.error ?? "Failed to save."); }
+    setSaving(false);
+  }
+
+  async function del() {
+    if (!confirm(`Delete activity "${activity.name}"? All registrations for it will be removed.`)) return;
+    await fetch(`/api/admin/activities/${activity.id}`, { method: "DELETE" });
+    onUpdate(); onClose();
+  }
+
+  return (
+    <Popover x={x} y={y} onClose={onClose}>
+      <form onSubmit={save}>
+        {/* Header */}
+        <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-semibold uppercase tracking-wide text-purple-600 dark:text-purple-400">Activity</span>
+            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none">✕</button>
+          </div>
+          <div className="flex gap-2 mb-2">
+            <input value={form.emoji} onChange={e => set("emoji", e.target.value)} placeholder="✦"
+              className="w-12 text-center border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-400" />
+            <input required value={form.name} onChange={e => set("name", e.target.value)} className={inputCls} />
+          </div>
+          {/* Capacity bar */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${pct * 100}%` }} />
+            </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{activity.enrolled}/{activity.capacity}</span>
+          </div>
+        </div>
+
+        {/* Fields */}
+        <div className="px-4 py-3 space-y-3">
+          <div>
+            <label className={labelCls}>Location</label>
+            <input value={form.location} onChange={e => set("location", e.target.value)} placeholder="Room, building…" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Days</label>
+            <MiniDayPicker value={form.day} onChange={v => set("day", v)} availableDays={availableDays} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={labelCls}>Start</label>
+              <TimePicker value={form.start_time} onChange={v => set("start_time", v)} />
+            </div>
+            <div>
+              <label className={labelCls}>End</label>
+              <TimePicker value={form.end_time} onChange={v => set("end_time", v)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={labelCls}>Capacity</label>
+              <input required type="number" min="1" value={form.capacity} onChange={e => set("capacity", e.target.value)} className={inputCls} />
+            </div>
+            {series.length > 0 && (
+              <div>
+                <label className={labelCls}>Series</label>
+                <select value={form.series_id} onChange={e => set("series_id", e.target.value)}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded px-2.5 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-400">
+                  <option value="">None</option>
+                  {series.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+          <div>
+            <label className={labelCls}>Description <span className="font-normal opacity-60">(optional)</span></label>
+            <input value={form.description} onChange={e => set("description", e.target.value)} className={inputCls} />
+          </div>
+          {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+        </div>
+
+        {/* Footer */}
+        <div className="px-4 pb-4 flex items-center justify-between">
+          <div className="flex gap-3">
+            <button type="button" onClick={() => { onOpenRoster({ type: "activity", id: activity.id, name: activity.name, capacity: activity.capacity }); onClose(); }}
+              className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-medium">Roster</button>
+            <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline">Delete</button>
+          </div>
+          <button type="submit" disabled={saving}
+            className="px-4 py-1.5 text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white rounded-lg disabled:opacity-50 transition-colors">
+            {saving ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </form>
+    </Popover>
+  );
+}
+
+// ── Main Grid Component ───────────────────────────────────────────────────────
+
+export function CampGrid({ tracks, activities, series, availableDays, campId, onUpdate, onOpenRoster }: CampGridProps) {
+  const [popover, setPopover] = useState<PopoverState | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  const days = ALL_DAYS.filter(d => availableDays.includes(d));
+
+  // Compute effective time range
+  const allTimes = [
+    ...tracks.flatMap(t => [timeToMins(t.start_time), timeToMins(t.end_time)]),
+    ...activities.flatMap(a => [timeToMins(a.start_time), timeToMins(a.end_time)]),
+  ];
+  const effectiveStart = allTimes.length ? Math.min(GRID_START, Math.min(...allTimes)) : GRID_START;
+  const effectiveEnd = allTimes.length ? Math.max(GRID_END, Math.max(...allTimes)) : GRID_END;
+  const visibleSlots = timeSlots.filter(m => m >= effectiveStart && m <= effectiveEnd);
+
+  function handleColumnClick(e: React.MouseEvent<HTMLDivElement>, day: string) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relY = e.clientY - rect.top + e.currentTarget.scrollTop;
+    // Snap to 30-min slot
+    const clickMins = yToMins(relY);
+    const snapped = Math.max(effectiveStart, Math.min(effectiveEnd - 60, clickMins));
+    setPopover({
+      kind: "create",
+      x: e.clientX, y: e.clientY,
+      prefillStart: minsToTime(snapped),
+      prefillEnd: minsToTime(snapped + 60),
+      prefillDay: day,
+    });
+  }
+
+  // Pre-compute overlap columns per day for activities
+  const actColsByDay: Record<string, Record<string, { col: number; cols: number }>> = {};
+  for (const day of days) {
+    const dayActs = activities.filter(a => parseDays(a.day).includes(day));
+    actColsByDay[day] = computeColumns(dayActs.map(a => ({
+      id: a.id, start: timeToMins(a.start_time), end: timeToMins(a.end_time),
+    })));
+  }
+
+  // Current time indicator
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const showNow = nowMins >= effectiveStart && nowMins <= effectiveEnd;
+
+  return (
+    <div className="select-none">
+      {/* Hint */}
+      <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Click any empty area to add an activity or track · Click a block to edit</p>
+
+      <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+        {/* Day header row */}
+        <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 sticky top-0 z-10">
+          <div className="w-16 shrink-0" />
+          {days.map(day => (
+            <div key={day} className="flex-1 min-w-28 px-2 py-2 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 border-l border-gray-200 dark:border-gray-700">
+              {day.slice(0, 3)}
+            </div>
+          ))}
+        </div>
+
+        {/* Scrollable grid body */}
+        <div className="overflow-y-auto max-h-[70vh]">
+          <div className="flex" style={{ minHeight: timeToY(effectiveEnd) - timeToY(effectiveStart) + SLOT_HEIGHT }}>
+            {/* Time labels */}
+            <div className="w-16 shrink-0 relative" style={{ height: timeToY(effectiveEnd) - timeToY(effectiveStart) + SLOT_HEIGHT }}>
+              {visibleSlots.map(mins => (
+                mins % 60 === 0 && (
+                  <div key={mins} style={{ position: "absolute", top: timeToY(mins) - timeToY(effectiveStart) - 8 }}
+                    className="text-right pr-2 w-full text-xs text-gray-400 dark:text-gray-500 leading-none">
+                    {formatTime(minsToTime(mins))}
+                  </div>
+                )
+              ))}
+            </div>
+
+            {/* Day columns */}
+            {days.map(day => {
+              const dayActs = activities.filter(a => parseDays(a.day).includes(day));
+              const colMap = actColsByDay[day];
+              const colHeight = timeToY(effectiveEnd) - timeToY(effectiveStart) + SLOT_HEIGHT;
+
+              return (
+                <div key={day} className="flex-1 min-w-28 border-l border-gray-200 dark:border-gray-700 relative cursor-pointer"
+                  style={{ height: colHeight }}
+                  onClick={e => handleColumnClick(e, day)}>
+
+                  {/* Slot lines */}
+                  {visibleSlots.map(mins => (
+                    <div key={mins} style={{ position: "absolute", top: timeToY(mins) - timeToY(effectiveStart), width: "100%" }}
+                      className={`border-t ${mins % 60 === 0 ? "border-gray-200 dark:border-gray-700" : "border-gray-100 dark:border-gray-800"}`} />
+                  ))}
+
+                  {/* Current time indicator */}
+                  {showNow && (
+                    <div style={{ position: "absolute", top: timeToY(nowMins) - timeToY(effectiveStart), width: "100%", zIndex: 5 }}
+                      className="flex items-center pointer-events-none">
+                      <div className="w-2 h-2 rounded-full bg-red-500 -ml-1" />
+                      <div className="flex-1 h-px bg-red-400" />
+                    </div>
+                  )}
+
+                  {/* Track blocks */}
+                  {tracks.map(track => {
+                    const top = timeToY(timeToMins(track.start_time)) - timeToY(effectiveStart);
+                    const height = Math.max(20, timeToY(timeToMins(track.end_time)) - timeToY(timeToMins(track.start_time)));
+                    return (
+                      <div key={track.id}
+                        style={{ position: "absolute", top, height, left: 2, right: 2, zIndex: 2 }}
+                        className="rounded-md border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900/40 px-1.5 py-1 overflow-hidden cursor-pointer hover:brightness-95 transition-[filter]"
+                        onClick={e => { e.stopPropagation(); setPopover({ kind: "track", x: e.clientX, y: e.clientY, track }); }}>
+                        <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 truncate leading-tight">
+                          {track.emoji ? `${track.emoji} ` : ""}{track.name}
+                        </p>
+                        {track.location && height > 36 && (
+                          <p className="text-xs text-blue-700 dark:text-blue-300 truncate leading-tight opacity-75">📍 {track.location}</p>
+                        )}
+                        {height > 48 && (
+                          <p className="text-xs text-blue-700 dark:text-blue-300 leading-tight opacity-60">{track.enrolled}/{track.capacity}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Activity blocks */}
+                  {dayActs.map(activity => {
+                    const { col, cols } = colMap[activity.id] ?? { col: 0, cols: 1 };
+                    const top = timeToY(timeToMins(activity.start_time)) - timeToY(effectiveStart);
+                    const height = Math.max(20, timeToY(timeToMins(activity.end_time)) - timeToY(timeToMins(activity.start_time)));
+                    const widthPct = 100 / cols;
+                    return (
+                      <div key={activity.id}
+                        style={{
+                          position: "absolute", top, height,
+                          left: `calc(${col * widthPct}% + 2px)`,
+                          width: `calc(${widthPct}% - 4px)`,
+                          zIndex: 3,
+                        }}
+                        className="rounded-md border border-purple-300 dark:border-purple-700 bg-purple-100 dark:bg-purple-900/40 px-1.5 py-1 overflow-hidden cursor-pointer hover:brightness-95 transition-[filter]"
+                        onClick={e => { e.stopPropagation(); setPopover({ kind: "activity", x: e.clientX, y: e.clientY, activity }); }}>
+                        <p className="text-xs font-semibold text-purple-900 dark:text-purple-100 truncate leading-tight">
+                          {activity.emoji ? `${activity.emoji} ` : ""}{activity.name}
+                        </p>
+                        {activity.location && height > 36 && (
+                          <p className="text-xs text-purple-700 dark:text-purple-300 truncate leading-tight opacity-75">📍 {activity.location}</p>
+                        )}
+                        {height > 48 && (
+                          <p className="text-xs text-purple-700 dark:text-purple-300 leading-tight opacity-60">{activity.enrolled}/{activity.capacity}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Popovers */}
+      {popover?.kind === "create" && (
+        <CreatePopover
+          x={popover.x} y={popover.y}
+          prefillStart={popover.prefillStart} prefillEnd={popover.prefillEnd} prefillDay={popover.prefillDay}
+          availableDays={availableDays} series={series} campId={campId}
+          onClose={() => setPopover(null)} onCreated={onUpdate}
+        />
+      )}
+      {popover?.kind === "track" && (
+        <TrackPopover
+          x={popover.x} y={popover.y} track={popover.track}
+          onClose={() => setPopover(null)} onUpdate={onUpdate} onOpenRoster={onOpenRoster}
+        />
+      )}
+      {popover?.kind === "activity" && (
+        <ActivityPopover
+          x={popover.x} y={popover.y} activity={popover.activity}
+          availableDays={availableDays} series={series}
+          onClose={() => setPopover(null)} onUpdate={onUpdate} onOpenRoster={onOpenRoster}
+        />
+      )}
+    </div>
+  );
+}

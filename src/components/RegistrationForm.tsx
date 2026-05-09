@@ -62,6 +62,8 @@ export default function RegistrationForm({
   const [error, setError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<Confirmation | null>(null);
   const [logoMissing, setLogoMissing] = useState(false);
+  const [honeypot, setHoneypot] = useState("");
+  const [formLoadedAt] = useState(() => Date.now());
 
   const set = (field: keyof FormData, value: string | boolean) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -105,6 +107,8 @@ export default function RegistrationForm({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        _t: formLoadedAt,
+        _hp: honeypot,
         chosen_first_name: form.chosen_first_name.trim(),
         chosen_last_name: form.chosen_last_name.trim(),
         legal_first_name: form.legal_same_as_chosen
@@ -400,6 +404,20 @@ export default function RegistrationForm({
             />
           )}
         </Card>
+
+          {/* Honeypot — off-screen, invisible to real users, bots fill it in */}
+        <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px", overflow: "hidden" }}>
+          <label htmlFor="hp_url">Website</label>
+          <input
+            id="hp_url"
+            name="hp_url"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            value={honeypot}
+            onChange={(e) => setHoneypot(e.target.value)}
+          />
+        </div>
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">

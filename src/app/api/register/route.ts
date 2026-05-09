@@ -11,8 +11,21 @@ const REQUIRED_FIELDS = [
   "email",
 ] as const;
 
+const MIN_FILL_MS = 4_000; // reject submissions faster than 4 seconds
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
+
+  // Honeypot check — bots fill in fields humans can't see
+  if (body._hp) {
+    return NextResponse.json({ error: "Invalid submission." }, { status: 400 });
+  }
+
+  // Timing check — real humans take more than 4 seconds to fill out a form
+  const elapsed = typeof body._t === "number" ? Date.now() - body._t : Infinity;
+  if (elapsed < MIN_FILL_MS) {
+    return NextResponse.json({ error: "Invalid submission." }, { status: 400 });
+  }
 
   for (const field of REQUIRED_FIELDS) {
     if (!body[field]?.trim()) {

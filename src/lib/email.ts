@@ -75,6 +75,37 @@ export async function sendAdminInvite({
   });
 }
 
+export async function sendAdminRemoved({
+  to,
+  name,
+  removedBy,
+}: {
+  to: string;
+  name: string;
+  removedBy: string;
+}) {
+  await transporter.sendMail({
+    from: `Queer Camp <${process.env.SMTP_USER}>`,
+    to,
+    subject: "Your Queer Camp admin access has been removed",
+    text: [
+      `Hi ${name},`,
+      "",
+      `Your admin access to Queer Camp has been removed by ${removedBy}.`,
+      "",
+      "If you think this was a mistake, please reach out to your camp organizer.",
+      "",
+      "— The Queer Camp Team",
+    ].join("\n"),
+    html: `
+      <p>Hi ${name},</p>
+      <p>Your admin access to Queer Camp has been removed by ${removedBy}.</p>
+      <p>If you think this was a mistake, please reach out to your camp organizer.</p>
+      <p>— The Queer Camp Team</p>
+    `.trim(),
+  });
+}
+
 export async function sendScheduleLink({
   to,
   displayName,

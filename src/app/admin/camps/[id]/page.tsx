@@ -9,6 +9,10 @@ import { ShortcutBadge } from "@/components/admin/ShortcutBadge";
 
 type Tab = "tracks" | "activities" | "series";
 
+type RosterTarget = { type: "track" | "activity"; id: string; name: string; capacity: number };
+type RosterCamper = { id: string; chosen_first_name: string; chosen_last_name: string; pronouns: string | null; registration_id?: string };
+type RosterData = { capacity: number; enrolled: number; campers: RosterCamper[]; available: RosterCamper[] };
+
 const ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 function daysInRange(startDate: string, endDate: string): string[] {
@@ -215,6 +219,9 @@ function seriesToForm(s: ActivitySeries): SeriesForm {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+type TrackWithCount = Track & { enrolled: number };
+type ActivityWithCount = Activity & { enrolled: number };
+
 export default function CampDetailPage() {
   const { id: campId } = useParams<{ id: string }>();
   const [tab, setTab] = useState<Tab>("tracks");
@@ -225,9 +232,16 @@ export default function CampDetailPage() {
   useKeyboardShortcut("3", () => setTab("series"));
   const [availableDays, setAvailableDays] = useState<string[]>(ALL_DAYS);
 
-  const [tracks, setTracks] = useState<Track[]>([]);
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [tracks, setTracks] = useState<TrackWithCount[]>([]);
+  const [activities, setActivities] = useState<ActivityWithCount[]>([]);
   const [series, setSeries] = useState<ActivitySeries[]>([]);
+
+  const [rosterTarget, setRosterTarget] = useState<RosterTarget | null>(null);
+  const [rosterData, setRosterData] = useState<RosterData | null>(null);
+  const [rosterLoading, setRosterLoading] = useState(false);
+  const [rosterError, setRosterError] = useState<string | null>(null);
+  const [addingCamper, setAddingCamper] = useState("");
+  const [addingBusy, setAddingBusy] = useState(false);
 
   const [showTrackForm, setShowTrackForm] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
@@ -260,6 +274,29 @@ export default function CampDetailPage() {
     if (res.ok) setSeries(await res.json());
   }
 
+  async function loadRoster(target: RosterTarget) {
+    setRosterLoading(true);
+    setRosterError(null);
+    const res = await fetch(`/api/admin/${target.type === "track" ? "tracks" : "activities"}/${target.id}/roster`);
+    if (res.ok) {
+      setRosterData(await res.json());
+    } else {
+      setRosterError("Failed to load roster.");
+    }
+    setRosterLoading(false);
+  }
+
+  useEffect(() => {
+    if (!rosterTarget) return;
+    loadRoster(rosterTarget);
+    const interval = setInterval(() => {
+      loadTracks();
+      loadActivities();
+      loadRoster(rosterTarget);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [rosterTarget]);
+
   useEffect(() => {
     fetch(`/api/admin/camps`).then(r => r.json()).then((camps: { id: string; name: string; start_date: string; end_date: string }[]) => {
       const camp = camps.find(c => c.id === campId);
@@ -267,6 +304,58 @@ export default function CampDetailPage() {
     });
     loadTracks(); loadActivities(); loadSeries();
   }, [campId]);
+
+  function openRoster(target: RosterTarget) {
+    setRosterData(null);
+    setAddingCamper("");
+    setRosterTarget(target);
+  }
+
+  function closeRoster() {
+    setRosterTarget(null);
+    setRosterData(null);
+    setRosterError(null);
+    setAddingCamper("");
+  }
+
+  async function rosterAdd() {
+    if (!rosterTarget || !addingCamper) return;
+    setAddingBusy(true);
+    setRosterError(null);
+    const url = `/api/admin/${rosterTarget.type === "track" ? "tracks" : "activities"}/${rosterTarget.id}/roster`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ camper_id: addingCamper }),
+    });
+    if (res.ok) {
+      setAddingCamper("");
+      await loadRoster(rosterTarget);
+      rosterTarget.type === "track" ? loadTracks() : loadActivities();
+    } else {
+      const d = await res.json();
+      setRosterError(d.error ?? "Failed to add camper.");
+    }
+    setAddingBusy(false);
+  }
+
+  async function rosterRemove(camperId: string) {
+    if (!rosterTarget) return;
+    setRosterError(null);
+    const url = `/api/admin/${rosterTarget.type === "track" ? "tracks" : "activities"}/${rosterTarget.id}/roster`;
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ camper_id: camperId }),
+    });
+    if (res.ok) {
+      await loadRoster(rosterTarget);
+      rosterTarget.type === "track" ? loadTracks() : loadActivities();
+    } else {
+      const d = await res.json();
+      setRosterError(d.error ?? "Failed to remove camper.");
+    }
+  }
 
   async function handleCreate(url: string, body: object, onSuccess: () => void) {
     setSaving(true); setError(null);
@@ -294,8 +383,22 @@ export default function CampDetailPage() {
   const btnPrimary = "bg-black text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50";
   const btnSecondary = "text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline";
   const btnDanger = "text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline";
+  const btnRoster = "text-sm text-purple-700 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-200 font-medium underline";
   const formCard = "mb-6 p-5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg space-y-3";
   const card = "p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg";
+
+  function EnrollCount({ enrolled, capacity }: { enrolled: number; capacity: number }) {
+    const pct = Math.min(enrolled / capacity, 1);
+    const color = pct >= 1 ? "bg-red-500" : pct >= 0.8 ? "bg-yellow-500" : "bg-green-500";
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+        <span className="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+          <span className={`block h-full ${color} rounded-full transition-all`} style={{ width: `${pct * 100}%` }} />
+        </span>
+        {enrolled}/{capacity}
+      </span>
+    );
+  }
 
   function formatDays(day: string) {
     return parseDays(day).join(", ") || "—";
@@ -345,12 +448,14 @@ export default function CampDetailPage() {
                 </form>
               ) : (
                 <div key={t.id} className={`${card} flex items-start justify-between`}>
-                  <div>
+                  <div className="space-y-1">
                     <p className="font-medium">{t.emoji ? `${t.emoji} ` : ""}{t.name}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{formatTime(t.start_time)} – {formatTime(t.end_time)} · Capacity {t.capacity}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{formatTime(t.start_time)} – {formatTime(t.end_time)}</p>
                     {t.description && <p className="text-sm text-gray-500 dark:text-gray-400">{t.description}</p>}
+                    <EnrollCount enrolled={t.enrolled} capacity={t.capacity} />
                   </div>
                   <div className="flex gap-3 ml-4 shrink-0">
+                    <button onClick={() => openRoster({ type: "track", id: t.id, name: t.name, capacity: t.capacity })} className={btnRoster}>Roster</button>
                     <button onClick={() => { setEditingTrack(t); setEditTrackForm(trackToForm(t)); setShowTrackForm(false); }} className={btnSecondary}>Edit</button>
                     <button onClick={() => handleDelete(`/api/admin/tracks/${t.id}`, "Delete this track? Campers assigned to it will lose their track assignment.", loadTracks)} className={btnDanger}>Delete</button>
                   </div>
@@ -398,13 +503,15 @@ export default function CampDetailPage() {
                 </form>
               ) : (
                 <div key={a.id} className={`${card} flex items-start justify-between`}>
-                  <div>
+                  <div className="space-y-1">
                     <p className="font-medium">{a.emoji ? `${a.emoji} ` : ""}{a.name}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{formatDays(a.day)} · {formatTime(a.start_time)} – {formatTime(a.end_time)} · Capacity {a.capacity}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{formatDays(a.day)} · {formatTime(a.start_time)} – {formatTime(a.end_time)}</p>
                     {a.series_id && <p className="text-sm text-gray-500 dark:text-gray-400">Series: {series.find(s => s.id === a.series_id)?.name ?? "—"}</p>}
                     {a.description && <p className="text-sm text-gray-500 dark:text-gray-400">{a.description}</p>}
+                    <EnrollCount enrolled={a.enrolled} capacity={a.capacity} />
                   </div>
                   <div className="flex gap-3 ml-4 shrink-0">
+                    <button onClick={() => openRoster({ type: "activity", id: a.id, name: a.name, capacity: a.capacity })} className={btnRoster}>Roster</button>
                     <button onClick={() => { setEditingActivity(a); setEditActivityForm(activityToForm(a)); setShowActivityForm(false); }} className={btnSecondary}>Edit</button>
                     <button onClick={() => handleDelete(`/api/admin/activities/${a.id}`, "Delete this activity? All registrations for it will be removed.", loadActivities)} className={btnDanger}>Delete</button>
                   </div>
@@ -413,6 +520,124 @@ export default function CampDetailPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* ── ROSTER PANEL ── */}
+      {rosterTarget && (
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={closeRoster} />
+          <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white dark:bg-gray-900 shadow-2xl z-50 flex flex-col">
+            {/* Header */}
+            <div className="flex items-start justify-between p-5 border-b border-gray-200 dark:border-gray-700">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-0.5">
+                  {rosterTarget.type === "track" ? "Track" : "Activity"} Roster
+                </p>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">{rosterTarget.name}</h2>
+                {rosterData && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          rosterData.enrolled >= rosterData.capacity ? "bg-red-500" :
+                          rosterData.enrolled / rosterData.capacity >= 0.8 ? "bg-yellow-500" : "bg-green-500"
+                        }`}
+                        style={{ width: `${Math.min(rosterData.enrolled / rosterData.capacity, 1) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                      {rosterData.enrolled} / {rosterData.capacity} enrolled
+                    </span>
+                    {rosterData.enrolled < rosterData.capacity && (
+                      <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                        ({rosterData.capacity - rosterData.enrolled} left)
+                      </span>
+                    )}
+                    {rosterData.enrolled >= rosterData.capacity && (
+                      <span className="text-xs font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">Full</span>
+                    )}
+                  </div>
+                )}
+              </div>
+              <button onClick={closeRoster} className="ml-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl leading-none shrink-0">✕</button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              {rosterLoading && !rosterData && (
+                <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
+              )}
+              {rosterError && (
+                <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-3 rounded">{rosterError}</p>
+              )}
+
+              {rosterData && (
+                <>
+                  {/* Enrolled campers */}
+                  {rosterData.campers.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 italic">No one enrolled yet.</p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {rosterData.campers.map(c => (
+                        <li key={c.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 group">
+                          <div>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              {c.chosen_first_name} {c.chosen_last_name}
+                            </span>
+                            {c.pronouns && (
+                              <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">{c.pronouns}</span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => rosterRemove(c.id)}
+                            className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Remove from roster"
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Add camper */}
+                  {rosterData.available.length > 0 && (
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Add camper</p>
+                      <div className="flex gap-2">
+                        <select
+                          value={addingCamper}
+                          onChange={e => setAddingCamper(e.target.value)}
+                          className="flex-1 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 min-w-0"
+                        >
+                          <option value="">Select a camper…</option>
+                          {rosterData.available.map(c => (
+                            <option key={c.id} value={c.id}>
+                              {c.chosen_first_name} {c.chosen_last_name}{c.pronouns ? ` (${c.pronouns})` : ""}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={rosterAdd}
+                          disabled={!addingCamper || addingBusy}
+                          className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50 shrink-0"
+                        >
+                          {addingBusy ? "Adding…" : "Add"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {rosterData.available.length === 0 && rosterData.campers.length > 0 && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 italic border-t border-gray-200 dark:border-gray-700 pt-4">
+                      All campers in this camp are already enrolled.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </>
       )}
 
       {/* ── SERIES ── */}

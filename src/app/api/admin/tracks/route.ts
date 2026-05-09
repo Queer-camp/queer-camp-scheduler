@@ -9,7 +9,15 @@ export async function GET(req: NextRequest) {
   const supabase = createAdminClient();
   const { data, error } = await supabase.from("tracks").select("*").eq("camp_id", campId).order("start_time");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  const trackIds = (data ?? []).map(t => t.id);
+  const enrolledCounts: Record<string, number> = {};
+  if (trackIds.length > 0) {
+    const { data: camperRows } = await supabase.from("campers").select("track_id").in("track_id", trackIds);
+    for (const c of camperRows ?? []) if (c.track_id) enrolledCounts[c.track_id] = (enrolledCounts[c.track_id] ?? 0) + 1;
+  }
+
+  return NextResponse.json((data ?? []).map(t => ({ ...t, enrolled: enrolledCounts[t.id] ?? 0 })));
 }
 
 export async function POST(req: NextRequest) {

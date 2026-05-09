@@ -9,7 +9,15 @@ export async function GET(req: NextRequest) {
   const supabase = createAdminClient();
   const { data, error } = await supabase.from("activities").select("*").eq("camp_id", campId).order("day").order("start_time");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  const activityIds = (data ?? []).map(a => a.id);
+  const enrolledCounts: Record<string, number> = {};
+  if (activityIds.length > 0) {
+    const { data: regs } = await supabase.from("registrations").select("activity_id").in("activity_id", activityIds);
+    for (const r of regs ?? []) enrolledCounts[r.activity_id] = (enrolledCounts[r.activity_id] ?? 0) + 1;
+  }
+
+  return NextResponse.json((data ?? []).map(a => ({ ...a, enrolled: enrolledCounts[a.id] ?? 0 })));
 }
 
 export async function POST(req: NextRequest) {

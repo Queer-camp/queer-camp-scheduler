@@ -1,0 +1,82 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase";
+import { requireAdmin } from "@/lib/admin-auth";
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!await requireAdmin(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { id } = await params;
+  const supabase = createAdminClient();
+
+  const { data: track } = await supabase
+    .from("tracks")
+    .select("id, camp_id, capacity")
+    .eq("id", id)
+    .single();
+  if (!track) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const [{ data: enrolled }, { data: unassigned }] = await Promise.all([
+    supabase
+      .from("campers")
+      .select("id, chosen_first_name, chosen_last_name, pronouns")
+      .eq("track_id", id)
+      .order("chosen_last_name"),
+    supabase
+      .from("campers")
+      .select("id, chosen_first_name, chosen_last_name, pronouns")
+      .eq("camp_id", track.camp_id)
+      .is("track_id", null)
+      .order("chosen_last_name"),
+  ]);
+
+  return NextResponse.json({
+    capacity: track.capacity,
+    enrolled: enrolled?.length ?? 0,
+    campers: enrolled ?? [],
+    available: unassigned ?? [],
+  });
+}
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!await requireAdmin(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { id } = await params;
+  const { camper_id } = await req.json();
+  if (!camper_id) return NextResponse.json({ error: "camper_id required" }, { status: 400 });
+
+  const supabase = createAdminClient();
+
+  const { data: track } = await supabase.from("tracks").select("capacity").eq("id", id).single();
+  const { count } = await supabase.from("campers").select("id", { count: "exact", head: true }).eq("track_id", id);
+  if (track && count !== null && count >= track.capacity) {
+    return NextResponse.json({ error: "Track is at capacity." }, { status: 409 });
+  }
+
+  const { error } = await supabase.from("campers").update({ track_id: id }).eq("id", camper_id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!await requireAdmin(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { id } = await params;
+  const { camper_id } = await req.json();
+  if (!camper_id) return NextResponse.json({ error: "camper_id required" }, { status: 400 });
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("campers")
+    .update({ track_id: null })
+    .eq("id", camper_id)
+    .eq("track_id", id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}

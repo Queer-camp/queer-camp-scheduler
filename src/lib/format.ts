@@ -26,7 +26,7 @@ export function formatDay(day: string): string {
   if (day.includes(",")) {
     const ORDER = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const sorted = day.split(",").map(d => d.trim()).sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
-    return sorted.join(" & ");
+    return sorted.join(", ");
   }
   // Plain day name ("Monday") — pass through
   if (!day.includes("-")) return day;

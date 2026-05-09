@@ -2,8 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { formatTime } from "@/lib/format";
-import { formatDay } from "@/lib/format";
+import { formatTime, formatDay } from "@/lib/format";
 
 type Activity = {
   id: string;
@@ -54,21 +53,29 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
   const { id } = use(params);
   const [camper, setCamper] = useState<Camper | null>(null);
   const [allActivities, setAllActivities] = useState<CampActivity[]>([]);
+  const [allTracks, setAllTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
   const [resending, setResending] = useState(false);
   const [resendDone, setResendDone] = useState(false);
   const [addingActivity, setAddingActivity] = useState(false);
   const [selectedActivityId, setSelectedActivityId] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editingTrack, setEditingTrack] = useState(false);
+  const [selectedTrackId, setSelectedTrackId] = useState<string>("");
+  const [savingTrack, setSavingTrack] = useState(false);
 
   async function load() {
     const res = await fetch(`/api/admin/campers/${id}`);
     if (res.ok) {
-      const data = await res.json();
+      const data: Camper = await res.json();
       setCamper(data);
-      // Fetch all activities for this camp
-      const actRes = await fetch(`/api/admin/activities?camp_id=${data.camp_id}`);
+      setSelectedTrackId(data.track_id ?? "");
+      const [actRes, trackRes] = await Promise.all([
+        fetch(`/api/admin/activities?camp_id=${data.camp_id}`),
+        fetch(`/api/admin/tracks?camp_id=${data.camp_id}`),
+      ]);
       if (actRes.ok) setAllActivities(await actRes.json());
+      if (trackRes.ok) setAllTracks(await trackRes.json());
     }
     setLoading(false);
   }
@@ -81,6 +88,18 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
     setResending(false);
     setResendDone(true);
     setTimeout(() => setResendDone(false), 3000);
+  }
+
+  async function saveTrack() {
+    setSavingTrack(true);
+    await fetch(`/api/admin/campers/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ track_id: selectedTrackId || null }),
+    });
+    setSavingTrack(false);
+    setEditingTrack(false);
+    await load();
   }
 
   async function removeRegistration(activityId: string) {
@@ -108,7 +127,6 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
   const registeredIds = new Set(camper.registrations.map(r => r.activities.id));
   const unregisteredActivities = allActivities.filter(a => !registeredIds.has(a.id));
 
-  // Group registrations by day
   const byDay: Record<string, Activity[]> = {};
   for (const reg of camper.registrations) {
     const act = reg.activities;
@@ -150,16 +168,48 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
 
       {/* Track */}
       <section className="mb-8">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Track</h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Track</h2>
+          {!editingTrack && (
+            <button onClick={() => setEditingTrack(true)} className="text-sm text-gray-600 hover:text-gray-900 underline">
+              {camper.tracks ? "Change" : "Assign"}
+            </button>
+          )}
+        </div>
         <div className="bg-white rounded-lg border border-gray-200 px-5 py-4">
-          {camper.tracks ? (
+          {editingTrack ? (
+            <div className="flex items-center gap-3">
+              <select
+                value={selectedTrackId}
+                onChange={e => setSelectedTrackId(e.target.value)}
+                className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+              >
+                <option value="">No track</option>
+                {allTracks.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({formatTime(t.start_time)} – {formatTime(t.end_time)})
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={saveTrack}
+                disabled={savingTrack}
+                className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
+              >
+                {savingTrack ? "Saving…" : "Save"}
+              </button>
+              <button onClick={() => { setEditingTrack(false); setSelectedTrackId(camper.track_id ?? ""); }} className="text-sm text-gray-500 hover:text-gray-900 underline">
+                Cancel
+              </button>
+            </div>
+          ) : camper.tracks ? (
             <p className="font-medium">{camper.tracks.name}
               <span className="text-sm font-normal text-gray-500 ml-2">
                 {formatTime(camper.tracks.start_time)} – {formatTime(camper.tracks.end_time)}
               </span>
             </p>
           ) : (
-            <p className="text-gray-400 text-sm">No track selected</p>
+            <p className="text-gray-400 text-sm">No track assigned</p>
           )}
         </div>
       </section>

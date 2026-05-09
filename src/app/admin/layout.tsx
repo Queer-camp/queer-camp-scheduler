@@ -41,9 +41,14 @@ function AdminNav() {
 
   return (
     <>
-      <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center justify-between">
+      <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-3">
+      <div className="max-w-5xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <span className="font-bold text-gray-900 dark:text-white">Queer Camp Admin</span>
+          <span className="flex items-center gap-2 font-bold text-gray-900 dark:text-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/queer-camp-logo.png" alt="" aria-hidden="true" className="h-7 w-auto" />
+            Queer Camp Admin
+          </span>
           <Link href="/admin/camps" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Camps</Link>
           <Link href="/admin/campers" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Campers</Link>
           <Link href="/admin/admins" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Admins</Link>
@@ -96,6 +101,7 @@ function AdminNav() {
             )}
           </div>
         </div>
+      </div>
       </nav>
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
     </>

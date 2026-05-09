@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { formatDateRange } from "@/lib/format";
+import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut";
+import { ShortcutBadge } from "@/components/admin/ShortcutBadge";
 
 type Camp = {
   id: string;
@@ -40,6 +42,11 @@ export default function CampersPage() {
   const [moveToCampId, setMoveToCampId] = useState("");
   const [confirmBulkMove, setConfirmBulkMove] = useState(false);
   const [movingBulk, setMovingBulk] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useKeyboardShortcut("/", () => { searchRef.current?.focus(); });
+  useKeyboardShortcut("s", () => { if (campers.length > 0) setSelecting(v => !v); });
+  useKeyboardShortcut("a", () => { if (selecting) toggleSelectAll(); }, { enabled: selecting });
 
   useEffect(() => {
     fetch("/api/admin/camps")
@@ -140,7 +147,7 @@ export default function CampersPage() {
               onClick={() => selecting ? exitSelecting() : setSelecting(true)}
               className="text-sm text-gray-600 hover:text-gray-900 underline"
             >
-              {selecting ? "Cancel" : "Select"}
+              {selecting ? "Cancel" : <span>Select<ShortcutBadge>S</ShortcutBadge></span>}
             </button>
           )}
         </div>
@@ -171,13 +178,19 @@ export default function CampersPage() {
         </div>
       )}
 
-      <input
-        type="search"
-        placeholder="Search by name or email…"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        className="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-6 focus:outline-none focus:ring-2 focus:ring-black"
-      />
+      <div className="relative mb-6">
+        <input
+          ref={searchRef}
+          type="search"
+          placeholder="Search by name or email…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+        />
+        <span className="[@media(pointer:fine)]:flex hidden absolute right-3 top-1/2 -translate-y-1/2 items-center pointer-events-none">
+          <kbd className="text-xs font-mono bg-gray-100 border border-gray-300 rounded px-1.5 py-0.5 text-gray-400">/</kbd>
+        </span>
+      </div>
 
       {loadingCamps || loadingCampers ? (
         <p className="text-gray-500 text-sm">Loading…</p>

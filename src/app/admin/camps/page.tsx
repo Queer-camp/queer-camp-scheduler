@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatDateRange } from "@/lib/format";
+import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut";
+import { ShortcutBadge } from "@/components/admin/ShortcutBadge";
 import type { Camp } from "@/types/database";
 
 type FullCamp = Camp & { is_active: boolean; archived: boolean };
@@ -22,6 +24,8 @@ export default function CampsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [editingCamp, setEditingCamp] = useState<FullCamp | null>(null);
+
+  useKeyboardShortcut("n", () => { if (!editingCamp) { setShowForm(v => !v); } });
   const [editForm, setEditForm] = useState(EMPTY_FORM);
 
   async function load() {
@@ -173,7 +177,7 @@ export default function CampsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Camps</h1>
         <button onClick={() => setShowForm(!showForm)} className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800">
-          {showForm ? "Cancel" : "New camp"}
+          {showForm ? "Cancel" : <span>New camp<ShortcutBadge>N</ShortcutBadge></span>}
         </button>
       </div>
 

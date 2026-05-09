@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import type { Track, Activity, ActivitySeries } from "@/types/database";
 import { formatTime } from "@/lib/format";
+import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut";
+import { ShortcutBadge } from "@/components/admin/ShortcutBadge";
 
 type Tab = "tracks" | "activities" | "series";
 
@@ -217,6 +219,10 @@ export default function CampDetailPage() {
   const { id: campId } = useParams<{ id: string }>();
   const [tab, setTab] = useState<Tab>("tracks");
   const [campName, setCampName] = useState("");
+
+  useKeyboardShortcut("1", () => setTab("tracks"));
+  useKeyboardShortcut("2", () => setTab("activities"));
+  useKeyboardShortcut("3", () => setTab("series"));
   const [availableDays, setAvailableDays] = useState<string[]>(ALL_DAYS);
 
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -303,9 +309,9 @@ export default function CampDetailPage() {
       </div>
 
       <div className="flex gap-0 border-b border-gray-200 mb-6">
-        <button className={TAB("tracks")} onClick={() => setTab("tracks")}>Tracks</button>
-        <button className={TAB("activities")} onClick={() => setTab("activities")}>Activities</button>
-        <button className={TAB("series")} onClick={() => setTab("series")}>Series</button>
+        <button className={TAB("tracks")} onClick={() => setTab("tracks")}>Tracks<ShortcutBadge>1</ShortcutBadge></button>
+        <button className={TAB("activities")} onClick={() => setTab("activities")}>Activities<ShortcutBadge>2</ShortcutBadge></button>
+        <button className={TAB("series")} onClick={() => setTab("series")}>Series<ShortcutBadge>3</ShortcutBadge></button>
       </div>
 
       {error && <p className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</p>}

@@ -20,6 +20,8 @@ export default function CampsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [editingCamp, setEditingCamp] = useState<FullCamp | null>(null);
+  const [editForm, setEditForm] = useState(EMPTY_FORM);
 
   async function load() {
     const res = await fetch("/api/admin/camps");
@@ -51,6 +53,20 @@ export default function CampsPage() {
     await load();
   }
 
+  async function saveCamp(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingCamp) return;
+    setSaving(true); setError(null);
+    await fetch(`/api/admin/camps/${editingCamp.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editForm),
+    });
+    setEditingCamp(null);
+    await load();
+    setSaving(false);
+  }
+
   async function cloneCamp(camp: FullCamp) {
     const res = await fetch(`/api/admin/camps/${camp.id}/clone`, { method: "POST" });
     if (res.ok) await load();
@@ -63,6 +79,41 @@ export default function CampsPage() {
 
   function CampCard({ camp }: { camp: FullCamp }) {
     const past = isPast(camp);
+    const isEditing = editingCamp?.id === camp.id;
+
+    if (isEditing) {
+      return (
+        <form onSubmit={saveCamp} className="p-5 bg-white rounded-lg border border-gray-200 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input type="text" required value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start date</label>
+              <input type="date" required value={editForm.start_date} onChange={e => setEditForm({ ...editForm, start_date: e.target.value })} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">End date</label>
+              <input type="date" required value={editForm.end_date} onChange={e => setEditForm({ ...editForm, end_date: e.target.value })} className={inputCls} />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={editForm.registration_open} onChange={e => setEditForm({ ...editForm, registration_open: e.target.checked })} />
+            Registration open
+          </label>
+          <div className="flex gap-2">
+            <button type="submit" disabled={saving} className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50">
+              {saving ? "Saving…" : "Save"}
+            </button>
+            <button type="button" onClick={() => setEditingCamp(null)} className="text-sm text-gray-600 hover:text-gray-900 underline">
+              Cancel
+            </button>
+          </div>
+        </form>
+      );
+    }
+
     return (
       <div className={`p-5 bg-white rounded-lg border flex items-start justify-between gap-4 ${past ? "border-gray-200 opacity-60" : "border-gray-200"}`}>
         <div>
@@ -77,6 +128,9 @@ export default function CampsPage() {
           <p className="text-sm text-gray-500 mt-0.5">{camp.start_date} – {camp.end_date}</p>
         </div>
         <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
+          <button onClick={() => { setEditingCamp(camp); setEditForm({ name: camp.name, start_date: camp.start_date, end_date: camp.end_date, registration_open: camp.registration_open }); setShowForm(false); }} className="text-sm text-gray-600 hover:text-gray-900 underline">
+            Edit
+          </button>
           <button onClick={() => patch(camp, { registration_open: !camp.registration_open })} className="text-sm text-gray-600 hover:text-gray-900 underline">
             {camp.registration_open ? "Close reg" : "Open reg"}
           </button>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, FormEvent, ReactNode } from "react";
-import Image from "next/image";
 import type {
   ActivityWithSpots,
   TrackWithSpots,
@@ -62,6 +61,7 @@ export default function RegistrationForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<Confirmation | null>(null);
+  const [logoMissing, setLogoMissing] = useState(false);
 
   const set = (field: keyof FormData, value: string | boolean) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -202,16 +202,20 @@ export default function RegistrationForm({
       >
         {/* ── Logo + Header ── */}
         <div className="text-center space-y-4">
-          <div className="flex justify-center">
-            <Image
-              src="/queer-camp-logo.png"
-              alt="Queer Camp"
-              width={140}
-              height={140}
-              className="drop-shadow-md"
-              priority
-            />
-          </div>
+          {!logoMissing && (
+            <div className="flex justify-center">
+              {/* Save your logo to /public/queer-camp-logo.png */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/queer-camp-logo.png"
+                alt="Queer Camp"
+                width={140}
+                height={140}
+                className="drop-shadow-md"
+                onError={() => setLogoMissing(true)}
+              />
+            </div>
+          )}
           <h1
             className="text-4xl font-extrabold tracking-tight"
             style={{
@@ -260,7 +264,7 @@ export default function RegistrationForm({
               onChange={(e) => set("legal_same_as_chosen", e.target.checked)}
               className="w-4 h-4 accent-purple-600"
             />
-            <span className="text-sm text-gray-600">
+            <span className="text-sm font-medium text-gray-800">
               Legal name is the same as chosen name
             </span>
           </label>
@@ -306,7 +310,7 @@ export default function RegistrationForm({
               onChange={(e) => set("email", e.target.value)}
               className={input}
             />
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-gray-600 mt-1">
               We&apos;ll send your personal schedule link here.
             </p>
           </Field>
@@ -329,10 +333,10 @@ export default function RegistrationForm({
                     key={track.id}
                     className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
                       isFull
-                        ? "opacity-50 cursor-not-allowed bg-gray-50 border-gray-100"
+                        ? "opacity-60 cursor-not-allowed bg-gray-50 border-gray-300"
                         : isSelected
-                          ? "border-purple-400 bg-purple-50 shadow-sm"
-                          : "border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50/40"
+                          ? "border-purple-500 bg-purple-50 shadow-sm"
+                          : "border-gray-400 bg-white hover:border-purple-400 hover:bg-purple-50/40"
                     }`}
                   >
                     <input
@@ -345,37 +349,31 @@ export default function RegistrationForm({
                       className="mt-0.5 accent-purple-600"
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm text-gray-800">
+                      <div className="font-semibold text-sm text-gray-900">
                         {track.emoji ? `${track.emoji} ` : ""}
                         {track.name}
                       </div>
-                      <div className="text-xs text-gray-500 mt-0.5">
+                      <div className="text-xs text-gray-600 mt-0.5">
                         {formatTime(track.start_time)} –{" "}
                         {formatTime(track.end_time)}
                       </div>
                       {track.description && (
-                        <div className="text-xs text-gray-600 mt-1">
+                        <div className="text-xs text-gray-700 mt-1">
                           {track.description}
                         </div>
                       )}
-                      <div
-                        className={`text-xs mt-1 font-medium ${
-                          isFull
-                            ? "text-red-500"
-                            : isLow
-                              ? "text-amber-600"
-                              : "text-gray-400"
-                        }`}
-                      >
-                        {isFull
-                          ? "Full"
-                          : isLow
-                            ? `${track.spots_left} spot${track.spots_left === 1 ? "" : "s"} left!`
-                            : `${track.spots_left} spots left`}
+                      <div className="text-xs mt-1 font-semibold">
+                        {isFull ? (
+                          <span className="text-red-700">⛔ Full — no spots remaining</span>
+                        ) : isLow ? (
+                          <span className="text-amber-700">⚠ Only {track.spots_left} spot{track.spots_left === 1 ? "" : "s"} left!</span>
+                        ) : (
+                          <span className="text-gray-500">{track.spots_left} spots left</span>
+                        )}
                       </div>
                     </div>
                     {isSelected && (
-                      <span className="text-purple-500 text-lg mt-0.5">✓</span>
+                      <span className="text-purple-600 font-bold text-lg mt-0.5" aria-label="Selected">✓</span>
                     )}
                   </label>
                 );
@@ -428,7 +426,7 @@ export default function RegistrationForm({
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const input =
-  "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-shadow";
+  "w-full border-2 border-gray-400 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-shadow placeholder:text-gray-400";
 
 function Card({ children, color }: { children: ReactNode; color: string }) {
   return (
@@ -460,9 +458,9 @@ function Field({
 }) {
   return (
     <div className="space-y-1">
-      <label className="block text-sm font-medium text-gray-700">
+      <label className="block text-sm font-semibold text-gray-900">
         {label}
-        {required && <span className="text-pink-500 ml-1">*</span>}
+        {required && <span className="text-pink-600 ml-1" aria-hidden="true">*</span>}
       </label>
       {children}
     </div>

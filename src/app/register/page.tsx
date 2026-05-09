@@ -10,12 +10,7 @@ export default async function RegisterPage() {
   const campId = await getActiveCampId();
 
   if (!campId) {
-    return (
-      <div className="max-w-xl mx-auto py-12 px-4">
-        <h1 className="text-2xl font-bold mb-2">Registration unavailable</h1>
-        <p className="text-gray-600">There is no active camp at this time.</p>
-      </div>
-    );
+    return <ClosedPage />;
   }
 
   const supabase = createAdminClient();
@@ -54,12 +49,7 @@ export default async function RegisterPage() {
   }
 
   if (camp && !camp.registration_open) {
-    return (
-      <div className="max-w-xl mx-auto py-12 px-4">
-        <h1 className="text-2xl font-bold mb-2">{camp.name}</h1>
-        <p className="text-gray-600">Registration is currently closed.</p>
-      </div>
-    );
+    return <ClosedPage campName={camp.name} />;
   }
 
   const activityIds = (activities ?? []).map((a) => a.id);
@@ -110,5 +100,63 @@ export default async function RegisterPage() {
       series={series ?? []}
       campName={camp?.name ?? "Camp"}
     />
+  );
+}
+
+const RAINBOW = "#d93025, #f5810e, #f5c23e, #5dbb46, #4b96f3, #7c3aed, #e879a8";
+
+function ClosedPage({ campName }: { campName?: string }) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 flex flex-col">
+      <div className="h-2" style={{ background: `linear-gradient(to right, ${RAINBOW})` }} />
+
+      <div className="flex-1 flex items-center justify-center px-4 py-16">
+        <div className="max-w-lg w-full text-center space-y-6">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/queer-camp-logo.png" alt="Queer Camp" className="h-28 w-auto mx-auto drop-shadow-md" />
+
+          <h1
+            className="text-4xl font-extrabold tracking-tight"
+            style={{
+              background: `linear-gradient(to right, ${RAINBOW})`,
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            {campName ? campName : "Queer Camp"}
+          </h1>
+
+          <p className="text-xl font-semibold text-gray-700">
+            Registration isn&apos;t open just yet.
+          </p>
+
+          <p className="text-gray-500 text-base leading-relaxed">
+            We&apos;re not quite ready to take sign-ups, but we&apos;d love for
+            you to stay in the loop. Head over to our website to learn about
+            upcoming events, announcements, and when registration opens.
+          </p>
+
+          <a
+            href="https://www.queer.camp/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:opacity-90 transition-opacity"
+            style={{ background: `linear-gradient(to right, #e879a8, #7c3aed, #4b96f3)` }}
+          >
+            Stay up to date at queer.camp →
+          </a>
+
+          <p className="text-sm text-gray-400">
+            Already registered?{" "}
+            <a href="/get-link" className="underline hover:text-gray-600">
+              Get your schedule link
+            </a>
+          </p>
+        </div>
+      </div>
+
+      <div className="h-2" style={{ background: `linear-gradient(to right, ${RAINBOW})` }} />
+    </div>
   );
 }

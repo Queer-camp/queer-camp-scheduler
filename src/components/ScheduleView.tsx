@@ -30,15 +30,16 @@ interface Props {
   series: ActivitySeries[];
 }
 
+const RAINBOW = "#d93025, #f5810e, #f5c23e, #5dbb46, #4b96f3, #7c3aed, #e879a8";
+const GRADIENT = "linear-gradient(to right, #e879a8, #7c3aed, #4b96f3)";
+
 // ── Root ──────────────────────────────────────────────────────────────────────
 
 export default function ScheduleView(props: Props) {
   const [editing, setEditing] = useState(false);
 
   if (editing) {
-    return (
-      <EditMode {...props} onCancel={() => setEditing(false)} onSaved={() => setEditing(false)} />
-    );
+    return <EditMode {...props} onCancel={() => setEditing(false)} onSaved={() => setEditing(false)} />;
   }
 
   return <ViewMode {...props} onEdit={() => setEditing(true)} />;
@@ -75,7 +76,6 @@ function ViewMode({
     [activities, registeredActivityIds]
   );
 
-  // Group registered activities by day
   const byDay = useMemo(() => {
     const map = new Map<string, ActivityWithSpots[]>();
     for (const a of registeredActivities) {
@@ -86,101 +86,119 @@ function ViewMode({
   }, [registeredActivities]);
 
   return (
-    <div className="max-w-xl mx-auto py-12 px-4">
-      <p className="text-sm text-gray-500 mb-1">{campName}</p>
-      <h1 className="text-2xl font-bold">
-        {displayName}&apos;s Schedule
-      </h1>
-      {camper.pronouns && (
-        <p className="text-gray-500 text-sm mt-0.5">{camper.pronouns}</p>
-      )}
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 print:bg-white print:min-h-0">
+      {/* Rainbow bar — hidden on print */}
+      <div className="h-2 print:hidden" style={{ background: `linear-gradient(to right, ${RAINBOW})` }} />
 
-      {/* Track */}
-      {currentTrack && (
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-            Morning Track
-          </p>
-          <p className="font-medium">
-            {currentTrack.emoji ? `${currentTrack.emoji} ` : ""}
-            {currentTrack.name}
-          </p>
-          <p className="text-sm text-gray-500">
-            {formatTime(currentTrack.start_time)} –{" "}
-            {formatTime(currentTrack.end_time)}
-          </p>
+      <div className="max-w-xl mx-auto px-4 pt-10 pb-16 print:pt-4 print:pb-4">
+        {/* Logo — hidden on print */}
+        <div className="flex justify-center mb-6 print:hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/queer-camp-logo.png" alt="Queer Camp" className="h-20 w-auto drop-shadow-md" />
         </div>
-      )}
 
-      {/* Schedule by day */}
-      {byDay.length === 0 ? (
-        <p className="text-gray-400 text-sm mt-8">
-          No workshops selected yet.{" "}
-          <button onClick={onEdit} className="underline">
-            Add some →
-          </button>
-        </p>
-      ) : (
-        <div className="mt-8 space-y-6">
-          {byDay.map(([day, dayActivities]) => (
-            <div key={day}>
-              <h2 className="font-semibold text-gray-900 mb-3">
-                {formatDay(day)}
-              </h2>
-              <div className="space-y-2">
-                {dayActivities.map((a) => {
-                  const actSeries = a.series_id
-                    ? series.find((s) => s.id === a.series_id)
-                    : null;
-                  return (
-                    <div
-                      key={a.id}
-                      className="flex items-start gap-3 p-3 rounded-lg border"
-                    >
-                      <div className="text-xs text-gray-400 w-24 pt-0.5 shrink-0">
-                        {formatTime(a.start_time)}
-                        <br />
-                        {formatTime(a.end_time)}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">
-                          {a.emoji ? `${a.emoji} ` : ""}
-                          {a.name}
-                        </p>
-                        {actSeries && (
-                          <p className="text-xs text-gray-400 italic">
-                            {actSeries.name}
+        {/* Header */}
+        <p className="text-sm text-gray-500 print:text-black mb-1">{campName}</p>
+        <h1 className="text-3xl font-extrabold tracking-tight print:text-black mb-0.5"
+          style={{ background: GRADIENT, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}
+        >
+          {displayName}&apos;s Schedule
+        </h1>
+        {camper.pronouns && (
+          <p className="text-gray-500 print:text-gray-600 text-sm mt-0.5">{camper.pronouns}</p>
+        )}
+
+        {/* Track */}
+        {currentTrack && (
+          <div className="mt-6 p-4 bg-white print:bg-white rounded-xl border-2 border-purple-200 print:border print:border-gray-300">
+            <p className="text-xs font-bold text-purple-500 print:text-gray-500 uppercase tracking-wide mb-1">
+              Morning Track
+            </p>
+            <p className="font-semibold text-gray-900">
+              {currentTrack.emoji ? `${currentTrack.emoji} ` : ""}
+              {currentTrack.name}
+            </p>
+            <p className="text-sm text-gray-500 print:text-gray-600">
+              {formatTime(currentTrack.start_time)} – {formatTime(currentTrack.end_time)}
+            </p>
+          </div>
+        )}
+
+        {/* Schedule by day */}
+        {byDay.length === 0 ? (
+          <div className="mt-8 text-center py-10 print:hidden">
+            <p className="text-gray-400 text-sm mb-2">No workshops selected yet.</p>
+            <button onClick={onEdit} className="text-purple-600 underline text-sm font-medium">
+              Add some →
+            </button>
+          </div>
+        ) : (
+          <div className="mt-8 space-y-6">
+            {byDay.map(([day, dayActivities]) => (
+              <div key={day}>
+                <h2
+                  className="font-bold text-base mb-3 print:text-black"
+                  style={{ color: "#7c3aed" }}
+                >
+                  {formatDay(day)}
+                </h2>
+                <div className="space-y-2">
+                  {dayActivities.map((a) => {
+                    const actSeries = a.series_id
+                      ? series.find((s) => s.id === a.series_id)
+                      : null;
+                    return (
+                      <div
+                        key={a.id}
+                        className="flex items-start gap-3 p-3 rounded-xl bg-white print:bg-white border border-gray-200 print:border-gray-300"
+                      >
+                        <div className="text-xs text-gray-400 print:text-gray-600 w-20 pt-0.5 shrink-0 font-medium">
+                          {formatTime(a.start_time)}
+                          <br />
+                          {formatTime(a.end_time)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {a.emoji ? `${a.emoji} ` : ""}
+                            {a.name}
                           </p>
-                        )}
+                          {actSeries && (
+                            <p className="text-xs text-gray-500 mt-0.5">{actSeries.name}</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
-      {/* Actions */}
-      <div className="mt-10 flex gap-3 print:hidden">
-        <button
-          onClick={onEdit}
-          className="bg-black text-white px-5 py-2.5 rounded font-medium text-sm hover:bg-gray-800 transition-colors"
-        >
-          Edit selections
-        </button>
-        <button
-          onClick={() => window.print()}
-          className="border border-gray-300 px-5 py-2.5 rounded font-medium text-sm hover:border-gray-500 transition-colors"
-        >
-          Print
-        </button>
+        {/* Actions — hidden on print */}
+        <div className="mt-10 flex gap-3 print:hidden">
+          <button
+            onClick={onEdit}
+            className="text-white px-6 py-2.5 rounded-full font-bold text-sm shadow-md hover:opacity-90 transition-opacity"
+            style={{ background: GRADIENT }}
+          >
+            Edit selections
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="border-2 border-gray-300 px-6 py-2.5 rounded-full font-bold text-sm text-gray-700 hover:border-gray-400 transition-colors"
+          >
+            Print
+          </button>
+        </div>
+
+        <p className="mt-6 text-xs text-gray-400 print:hidden">
+          This is your personal schedule link — bookmark it to come back anytime.
+        </p>
       </div>
 
-      <p className="mt-8 text-xs text-gray-400 print:hidden">
-        This is your personal schedule link — bookmark it to come back anytime.
-      </p>
+      {/* Rainbow bar — hidden on print */}
+      <div className="h-2 print:hidden" style={{ background: `linear-gradient(to right, ${RAINBOW})` }} />
     </div>
   );
 }
@@ -199,7 +217,6 @@ function EditMode({
 }: Props & { onCancel: () => void; onSaved: () => void }) {
   const router = useRouter();
 
-  // Initialize from current registrations — treat each as an explicit selection
   const [userSelections, setUserSelections] = useState<Record<string, string>>(
     () => {
       const registeredIdSet = new Set(registeredActivityIds);
@@ -213,9 +230,7 @@ function EditMode({
     }
   );
 
-  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(
-    camper.track_id
-  );
+  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(camper.track_id);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -227,11 +242,7 @@ function EditMode({
       const picked = activities.find((a) => a.id === activityId);
       if (!picked?.series_id) continue;
       for (const partner of activities) {
-        if (
-          partner.series_id !== picked.series_id ||
-          partner.id === activityId
-        )
-          continue;
+        if (partner.series_id !== picked.series_id || partner.id === activityId) continue;
         const key = `${partner.day}|${partner.start_time}|${partner.end_time}`;
         if (!result[key]) result[key] = partner.id;
       }
@@ -275,121 +286,115 @@ function EditMode({
     }
 
     onSaved();
-    router.refresh(); // re-run server component to get fresh registration data
+    router.refresh();
   }
 
   return (
-    <div className="max-w-xl mx-auto py-12 px-4 space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Edit selections</h1>
-        <button
-          onClick={onCancel}
-          className="text-sm text-gray-500 hover:text-gray-800"
-        >
-          Cancel
-        </button>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
+      <div className="h-2" style={{ background: `linear-gradient(to right, ${RAINBOW})` }} />
 
-      {/* Track selection */}
-      {tracks.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold border-b pb-2">Morning Track</h2>
-          <div className="space-y-2">
-            {tracks.map((track) => {
-              const isFull =
-                track.spots_left <= 0 && track.id !== camper.track_id;
-              const isSelected = selectedTrackId === track.id;
-              const isLow = track.spots_left > 0 && track.spots_left <= 3;
-              return (
-                <label
-                  key={track.id}
-                  className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    isFull
-                      ? "opacity-50 cursor-not-allowed bg-gray-50"
-                      : isSelected
-                        ? "border-black bg-gray-50"
-                        : "border-gray-200 hover:border-gray-400"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="track"
-                    value={track.id}
-                    checked={isSelected}
-                    disabled={isFull}
-                    onChange={() => setSelectedTrackId(track.id)}
-                    className="mt-0.5"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">
-                      {track.emoji ? `${track.emoji} ` : ""}
-                      {track.name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {formatTime(track.start_time)} –{" "}
-                      {formatTime(track.end_time)}
-                    </p>
-                    <p
-                      className={`text-xs mt-0.5 font-medium ${
-                        isFull
-                          ? "text-red-500"
-                          : isLow
-                            ? "text-amber-600"
-                            : "text-gray-400"
-                      }`}
-                    >
-                      {isFull
-                        ? "Full"
-                        : isLow
-                          ? `${track.spots_left} spot${track.spots_left === 1 ? "" : "s"} left!`
-                          : `${track.spots_left} spots left`}
-                    </p>
-                  </div>
-                </label>
-              );
-            })}
+      <div className="max-w-2xl mx-auto px-4 py-10 space-y-8">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-extrabold tracking-tight"
+            style={{ background: GRADIENT, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}
+          >
+            Edit selections
+          </h1>
+          <button onClick={onCancel} className="text-sm text-gray-500 hover:text-gray-800 underline">
+            Cancel
+          </button>
+        </div>
+
+        {/* Track selection */}
+        {tracks.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border-t-4 p-6 space-y-3" style={{ borderTopColor: "#7c3aed" }}>
+            <h2 className="text-lg font-bold" style={{ color: "#7c3aed" }}>Morning Track</h2>
+            <div className="space-y-2">
+              {tracks.map((track) => {
+                const isFull = track.spots_left <= 0 && track.id !== camper.track_id;
+                const isSelected = selectedTrackId === track.id;
+                const isLow = track.spots_left > 0 && track.spots_left <= 3;
+                return (
+                  <label
+                    key={track.id}
+                    className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                      isFull
+                        ? "opacity-60 cursor-not-allowed bg-gray-50 border-gray-200"
+                        : isSelected
+                          ? "border-purple-500 bg-purple-50"
+                          : "border-gray-300 hover:border-purple-300 hover:bg-purple-50/30"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="track"
+                      value={track.id}
+                      checked={isSelected}
+                      disabled={isFull}
+                      onChange={() => setSelectedTrackId(track.id)}
+                      className="mt-0.5 accent-purple-600"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">
+                        {track.emoji ? `${track.emoji} ` : ""}{track.name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {formatTime(track.start_time)} – {formatTime(track.end_time)}
+                      </p>
+                      <p className="text-xs mt-0.5 font-semibold">
+                        {isFull ? <span className="text-red-700">⛔ Full</span>
+                          : isLow ? <span className="text-amber-700">⚠ {track.spots_left} spot{track.spots_left === 1 ? "" : "s"} left!</span>
+                          : <span className="text-gray-400">{track.spots_left} spots left</span>}
+                      </p>
+                    </div>
+                    {isSelected && <span className="text-purple-600 font-bold text-lg mt-0.5">✓</span>}
+                  </label>
+                );
+              })}
+            </div>
           </div>
-        </section>
-      )}
-
-      {/* Workshop selection */}
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold border-b pb-2">
-          Workshop Selection
-        </h2>
-        {timeSlots.length === 0 ? (
-          <p className="text-sm text-gray-400">
-            No workshops have been added yet.
-          </p>
-        ) : (
-          <WorkshopSlots
-            timeSlots={timeSlots}
-            series={series}
-            activities={activities}
-            userSelections={userSelections}
-            effectiveSelections={effectiveSelections}
-            onSlotClick={handleSlotClick}
-          />
         )}
-      </section>
 
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+        {/* Workshop selection */}
+        <div className="bg-white rounded-2xl shadow-sm border-t-4 p-6 space-y-4" style={{ borderTopColor: "#4b96f3" }}>
+          <h2 className="text-lg font-bold" style={{ color: "#4b96f3" }}>Workshop Selection</h2>
+          {timeSlots.length === 0 ? (
+            <p className="text-sm text-gray-400">No workshops have been added yet.</p>
+          ) : (
+            <WorkshopSlots
+              timeSlots={timeSlots}
+              series={series}
+              activities={activities}
+              userSelections={userSelections}
+              effectiveSelections={effectiveSelections}
+              onSlotClick={handleSlotClick}
+            />
+          )}
+        </div>
 
-      <div className="flex gap-3">
-        <button
-          onClick={handleSave}
-          disabled={submitting}
-          className="bg-black text-white px-6 py-2.5 rounded font-semibold text-sm hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {submitting ? "Saving…" : "Save changes"}
-        </button>
-        <button
-          onClick={onCancel}
-          className="border border-gray-300 px-6 py-2.5 rounded font-medium text-sm hover:border-gray-500 transition-colors"
-        >
-          Cancel
-        </button>
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{error}</div>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            onClick={handleSave}
+            disabled={submitting}
+            className="text-white px-6 py-3 rounded-full font-bold text-sm shadow-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+            style={{ background: GRADIENT }}
+          >
+            {submitting ? "Saving…" : "Save changes"}
+          </button>
+          <button
+            onClick={onCancel}
+            className="border-2 border-gray-300 px-6 py-3 rounded-full font-bold text-sm text-gray-700 hover:border-gray-400 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
+
+      <div className="h-2" style={{ background: `linear-gradient(to right, ${RAINBOW})` }} />
     </div>
   );
 }

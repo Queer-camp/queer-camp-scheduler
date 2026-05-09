@@ -22,9 +22,11 @@ export function formatDateRange(start: string, end: string): string {
 }
 
 export function formatDay(day: string): string {
-  // Comma-separated day names ("Saturday,Wednesday") → "Saturday & Wednesday"
+  // Comma-separated day names ("Saturday,Wednesday") → sorted by weekday order
   if (day.includes(",")) {
-    return day.split(",").map(d => d.trim()).join(" & ");
+    const ORDER = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const sorted = day.split(",").map(d => d.trim()).sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
+    return sorted.join(" & ");
   }
   // Plain day name ("Monday") — pass through
   if (!day.includes("-")) return day;

@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-const RAINBOW = "linear-gradient(to right, #d93025, #f5810e, #f5c23e, #5dbb46, #4b96f3, #7c3aed, #e879a8)";
+const GRADIENT = "linear-gradient(to right, #e879a8, #7c3aed, #4b96f3)";
 
 function ErrorMessage() {
   const searchParams = useSearchParams();
@@ -93,7 +93,7 @@ export default function AdminLoginPage() {
               type="submit"
               disabled={loading}
               className="w-full text-white py-2.5 px-6 rounded-full font-bold text-sm shadow-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-              style={{ background: RAINBOW }}
+              style={{ background: GRADIENT }}
             >
               {loading ? "Sending…" : "Send login link"}
             </button>

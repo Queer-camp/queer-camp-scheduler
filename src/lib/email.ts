@@ -31,7 +31,7 @@ export async function sendAdminLoginLink({
     ].join("\n"),
     html: `
       <p>Here's your Queer Camp admin login link (expires in 15 minutes):</p>
-      <p><a href="${loginUrl}" style="display:inline-block;padding:10px 20px;background:#000;color:#fff;text-decoration:none;border-radius:4px;font-weight:bold;">Log in to admin</a></p>
+      <p><a href="${loginUrl}" style="display:inline-block;padding:11px 28px;background:linear-gradient(to right,#e879a8,#7c3aed);color:#fff;text-decoration:none;border-radius:999px;font-weight:bold;font-size:15px;">Log in to admin</a></p>
       <p>If you didn't request this, you can ignore it.<br>— The Queer Camp Team</p>
     `.trim(),
   });
@@ -66,7 +66,7 @@ export async function sendAdminInvite({
     html: `
       <p>Hi ${name},</p>
       <p>${invitedBy} has invited you to be an admin for Queer Camp.</p>
-      <p><a href="${inviteUrl}" style="display:inline-block;padding:10px 20px;background:#000;color:#fff;text-decoration:none;border-radius:4px;font-weight:bold;">Accept invitation</a></p>
+      <p><a href="${inviteUrl}" style="display:inline-block;padding:11px 28px;background:linear-gradient(to right,#e879a8,#7c3aed);color:#fff;text-decoration:none;border-radius:999px;font-weight:bold;font-size:15px;">Accept invitation</a></p>
       <p style="font-size:12px;color:#666;">This link expires in 48 hours.</p>
       <p>— The Queer Camp Team</p>
     `.trim(),
@@ -132,7 +132,7 @@ export async function sendScheduleLink({
     html: `
       <p>Hi ${displayName},</p>
       <p>Here's your personal Queer Camp schedule link:</p>
-      <p><a href="${scheduleUrl}" style="display:inline-block;padding:10px 20px;background:#000;color:#fff;text-decoration:none;border-radius:4px;font-weight:bold;">View your schedule</a></p>
+      <p><a href="${scheduleUrl}" style="display:inline-block;padding:11px 28px;background:linear-gradient(to right,#e879a8,#7c3aed);color:#fff;text-decoration:none;border-radius:999px;font-weight:bold;font-size:15px;">View your schedule</a></p>
       <p>Bookmark it — you'll use it to view and update your workshop selections.</p>
       <p>See you at camp!<br>— The Queer Camp Team</p>
     `.trim(),

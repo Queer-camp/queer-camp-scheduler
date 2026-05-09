@@ -17,7 +17,7 @@ export async function GET(
     .single();
   if (!track) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const [{ data: enrolled }, { data: unassigned }] = await Promise.all([
+  const [{ data: enrolled }, { data: allCampers }, { data: allTracks }] = await Promise.all([
     supabase
       .from("campers")
       .select("id, chosen_first_name, chosen_last_name, pronouns")
@@ -25,17 +25,33 @@ export async function GET(
       .order("chosen_last_name"),
     supabase
       .from("campers")
-      .select("id, chosen_first_name, chosen_last_name, pronouns")
+      .select("id, chosen_first_name, chosen_last_name, pronouns, track_id")
       .eq("camp_id", track.camp_id)
-      .is("track_id", null)
       .order("chosen_last_name"),
+    supabase
+      .from("tracks")
+      .select("id, name")
+      .eq("camp_id", track.camp_id),
   ]);
+
+  const trackNameMap = Object.fromEntries((allTracks ?? []).map(t => [t.id, t.name]));
+  const enrolledSet = new Set((enrolled ?? []).map(c => c.id));
+
+  const available = (allCampers ?? [])
+    .filter(c => !enrolledSet.has(c.id))
+    .map(c => ({
+      id: c.id,
+      chosen_first_name: c.chosen_first_name,
+      chosen_last_name: c.chosen_last_name,
+      pronouns: c.pronouns,
+      current_track_name: c.track_id ? (trackNameMap[c.track_id] ?? null) : null,
+    }));
 
   return NextResponse.json({
     capacity: track.capacity,
     enrolled: enrolled?.length ?? 0,
     campers: enrolled ?? [],
-    available: unassigned ?? [],
+    available,
   });
 }
 

@@ -10,7 +10,7 @@ import { ShortcutBadge } from "@/components/admin/ShortcutBadge";
 type Tab = "tracks" | "activities" | "series";
 
 type RosterTarget = { type: "track" | "activity"; id: string; name: string; capacity: number };
-type RosterCamper = { id: string; chosen_first_name: string; chosen_last_name: string; pronouns: string | null; registration_id?: string };
+type RosterCamper = { id: string; chosen_first_name: string; chosen_last_name: string; pronouns: string | null; registration_id?: string; current_track_name?: string | null };
 type RosterData = { capacity: number; enrolled: number; campers: RosterCamper[]; available: RosterCamper[] };
 
 const ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -242,6 +242,8 @@ export default function CampDetailPage() {
   const [rosterError, setRosterError] = useState<string | null>(null);
   const [addingCamper, setAddingCamper] = useState("");
   const [addingBusy, setAddingBusy] = useState(false);
+  const [movingCamperId, setMovingCamperId] = useState<string | null>(null);
+  const [movingBusy, setMovingBusy] = useState(false);
 
   const [showTrackForm, setShowTrackForm] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
@@ -308,6 +310,7 @@ export default function CampDetailPage() {
   function openRoster(target: RosterTarget) {
     setRosterData(null);
     setAddingCamper("");
+    setMovingCamperId(null);
     setRosterTarget(target);
   }
 
@@ -316,6 +319,54 @@ export default function CampDetailPage() {
     setRosterData(null);
     setRosterError(null);
     setAddingCamper("");
+    setMovingCamperId(null);
+  }
+
+  async function rosterMove(camperId: string, targetId: string) {
+    if (!rosterTarget) return;
+    setMovingBusy(true);
+    setRosterError(null);
+    if (rosterTarget.type === "track") {
+      const res = await fetch(`/api/admin/tracks/${targetId}/roster`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ camper_id: camperId }),
+      });
+      if (res.ok) {
+        setMovingCamperId(null);
+        await loadRoster(rosterTarget);
+        loadTracks();
+      } else {
+        const d = await res.json();
+        setRosterError(d.error ?? "Failed to move camper.");
+      }
+    } else {
+      const delRes = await fetch(`/api/admin/activities/${rosterTarget.id}/roster`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ camper_id: camperId }),
+      });
+      if (!delRes.ok) {
+        const d = await delRes.json();
+        setRosterError(d.error ?? "Failed to remove from current activity.");
+        setMovingBusy(false);
+        return;
+      }
+      const addRes = await fetch(`/api/admin/activities/${targetId}/roster`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ camper_id: camperId }),
+      });
+      if (addRes.ok) {
+        setMovingCamperId(null);
+        await loadRoster(rosterTarget);
+        loadActivities();
+      } else {
+        const d = await addRes.json();
+        setRosterError(d.error ?? "Failed to add to new activity.");
+      }
+    }
+    setMovingBusy(false);
   }
 
   async function rosterAdd() {
@@ -577,24 +628,67 @@ export default function CampDetailPage() {
                   {rosterData.campers.length === 0 ? (
                     <p className="text-sm text-gray-500 dark:text-gray-400 italic">No one enrolled yet.</p>
                   ) : (
-                    <ul className="space-y-1">
+                    <ul className="space-y-0.5">
                       {rosterData.campers.map(c => (
-                        <li key={c.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 group">
-                          <div>
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">
-                              {c.chosen_first_name} {c.chosen_last_name}
-                            </span>
-                            {c.pronouns && (
-                              <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">{c.pronouns}</span>
+                        <li key={c.id} className="group rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
+                          <div className="flex items-center justify-between py-2 px-3">
+                            <div>
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {c.chosen_first_name} {c.chosen_last_name}
+                              </span>
+                              {c.pronouns && (
+                                <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">{c.pronouns}</span>
+                              )}
+                            </div>
+                            {movingCamperId !== c.id && (
+                              <div className="flex gap-3 ml-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => { setMovingCamperId(c.id); setRosterError(null); }}
+                                  className="text-xs text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-200 font-medium"
+                                >
+                                  Move →
+                                </button>
+                                <button
+                                  onClick={() => rosterRemove(c.id)}
+                                  className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                >
+                                  Remove
+                                </button>
+                              </div>
                             )}
                           </div>
-                          <button
-                            onClick={() => rosterRemove(c.id)}
-                            className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Remove from roster"
-                          >
-                            Remove
-                          </button>
+                          {movingCamperId === c.id && (
+                            <div className="flex items-center gap-2 px-3 pb-2">
+                              <select
+                                autoFocus
+                                defaultValue=""
+                                disabled={movingBusy}
+                                onChange={e => { if (e.target.value) rosterMove(c.id, e.target.value); }}
+                                className="flex-1 border border-purple-300 dark:border-purple-700 rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 min-w-0 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                              >
+                                <option value="" disabled>Move to…</option>
+                                {rosterTarget.type === "track"
+                                  ? tracks.filter(t => t.id !== rosterTarget.id).map(t => (
+                                      <option key={t.id} value={t.id}>
+                                        {t.emoji ? `${t.emoji} ` : ""}{t.name} ({t.enrolled}/{t.capacity})
+                                      </option>
+                                    ))
+                                  : activities.filter(a => a.id !== rosterTarget.id).map(a => (
+                                      <option key={a.id} value={a.id}>
+                                        {a.emoji ? `${a.emoji} ` : ""}{a.name}
+                                      </option>
+                                    ))
+                                }
+                              </select>
+                              <button
+                                onClick={() => setMovingCamperId(null)}
+                                disabled={movingBusy}
+                                className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 shrink-0 disabled:opacity-50"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -603,7 +697,9 @@ export default function CampDetailPage() {
                   {/* Add camper */}
                   {rosterData.available.length > 0 && (
                     <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Add camper</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        {rosterTarget.type === "track" ? "Add or move a camper" : "Add a camper"}
+                      </p>
                       <div className="flex gap-2">
                         <select
                           value={addingCamper}
@@ -613,7 +709,9 @@ export default function CampDetailPage() {
                           <option value="">Select a camper…</option>
                           {rosterData.available.map(c => (
                             <option key={c.id} value={c.id}>
-                              {c.chosen_first_name} {c.chosen_last_name}{c.pronouns ? ` (${c.pronouns})` : ""}
+                              {c.chosen_first_name} {c.chosen_last_name}
+                              {c.pronouns ? ` (${c.pronouns})` : ""}
+                              {c.current_track_name ? ` — currently: ${c.current_track_name}` : ""}
                             </option>
                           ))}
                         </select>
@@ -622,7 +720,7 @@ export default function CampDetailPage() {
                           disabled={!addingCamper || addingBusy}
                           className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50 shrink-0"
                         >
-                          {addingBusy ? "Adding…" : "Add"}
+                          {addingBusy ? "Adding…" : rosterTarget.type === "track" ? "Add / Move" : "Add"}
                         </button>
                       </div>
                     </div>

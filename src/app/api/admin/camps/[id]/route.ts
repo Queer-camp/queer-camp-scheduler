@@ -24,7 +24,7 @@ export async function PATCH(
   const body = await req.json();
   const supabase = createAdminClient();
 
-  const allowed = ["name", "start_date", "end_date", "registration_open", "is_active"];
+  const allowed = ["name", "start_date", "end_date", "registration_open", "is_active", "archived"];
   const updates = Object.fromEntries(
     Object.entries(body).filter(([k]) => allowed.includes(k))
   );

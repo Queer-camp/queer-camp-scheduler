@@ -24,6 +24,8 @@ export default function CampsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [editingCamp, setEditingCamp] = useState<FullCamp | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useKeyboardShortcut("n", () => { if (!editingCamp) { setShowForm(v => !v); } });
   const [editForm, setEditForm] = useState(EMPTY_FORM);
@@ -70,6 +72,14 @@ export default function CampsPage() {
     setEditingCamp(null);
     await load();
     setSaving(false);
+  }
+
+  async function deleteCamp(id: string) {
+    setDeleting(true);
+    await fetch(`/api/admin/camps/${id}`, { method: "DELETE" });
+    setConfirmDeleteId(null);
+    setDeleting(false);
+    await load();
   }
 
   async function cloneCamp(camp: FullCamp) {
@@ -163,9 +173,30 @@ export default function CampsPage() {
               Archive
             </button>
           ) : (
-            <button onClick={() => patch(camp, { archived: false })} className="text-sm text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 underline">
-              Unarchive
-            </button>
+            <>
+              <button onClick={() => patch(camp, { archived: false })} className="text-sm text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 underline">
+                Unarchive
+              </button>
+              {confirmDeleteId === camp.id ? (
+                <span className="flex items-center gap-2">
+                  <span className="text-sm text-red-600 dark:text-red-400 font-medium">Delete everything?</span>
+                  <button
+                    onClick={() => deleteCamp(camp.id)}
+                    disabled={deleting}
+                    className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-semibold underline disabled:opacity-50"
+                  >
+                    {deleting ? "Deleting…" : "Yes, delete"}
+                  </button>
+                  <button onClick={() => setConfirmDeleteId(null)} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 underline">
+                    Cancel
+                  </button>
+                </span>
+              ) : (
+                <button onClick={() => setConfirmDeleteId(camp.id)} className="text-sm text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 underline">
+                  Delete
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

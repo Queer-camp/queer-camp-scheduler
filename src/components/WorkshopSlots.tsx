@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ActivityWithSpots, ActivitySeries } from "@/types/database";
 import { formatTime, formatDay } from "@/lib/format";
 
@@ -36,6 +36,13 @@ export function buildTimeSlots(activities: ActivityWithSpots[]): TimeSlot[] {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+interface SeriesPending {
+  slotKey: string;
+  activity: ActivityWithSpots;
+  seriesName: string;
+  companions: ActivityWithSpots[];
+}
+
 interface Props {
   timeSlots: TimeSlot[];
   series: ActivitySeries[];
@@ -43,6 +50,7 @@ interface Props {
   userSelections: Record<string, string>;
   effectiveSelections: Record<string, string>;
   onSlotClick: (slotKey: string, activity: ActivityWithSpots) => void;
+  onSeriesConfirm?: (slotKey: string, activity: ActivityWithSpots, companionSlotKeys: string[]) => void;
 }
 
 export default function WorkshopSlots({
@@ -52,7 +60,9 @@ export default function WorkshopSlots({
   userSelections,
   effectiveSelections,
   onSlotClick,
+  onSeriesConfirm,
 }: Props) {
+  const [seriesPending, setSeriesPending] = useState<SeriesPending | null>(null);
   const days = useMemo(() => {
     const map = new Map<string, TimeSlot[]>();
     for (const slot of timeSlots) {
@@ -61,6 +71,18 @@ export default function WorkshopSlots({
     }
     return Array.from(map.entries());
   }, [timeSlots]);
+
+  function confirmSeries() {
+    if (!seriesPending) return;
+    const { slotKey, activity, companions } = seriesPending;
+    const companionSlotKeys = companions.map((c) => `${c.day}|${c.start_time}|${c.end_time}`);
+    if (onSeriesConfirm) {
+      onSeriesConfirm(slotKey, activity, companionSlotKeys);
+    } else {
+      onSlotClick(slotKey, activity);
+    }
+    setSeriesPending(null);
+  }
 
   return (
     <div className="space-y-8">
@@ -133,9 +155,18 @@ export default function WorkshopSlots({
                               checked={isSelected}
                               disabled={isFull}
                               readOnly
-                              onClick={() =>
-                                !isFull && onSlotClick(slot.key, activity)
-                              }
+                              onClick={() => {
+                                if (isFull) return;
+                                // Intercept series selections (not deselections)
+                                if (activity.series_id && !isSelected && actSeries) {
+                                  const companions = activities.filter(
+                                    (a) => a.series_id === activity.series_id && a.id !== activity.id
+                                  );
+                                  setSeriesPending({ slotKey: slot.key, activity, seriesName: actSeries.name, companions });
+                                } else {
+                                  onSlotClick(slot.key, activity);
+                                }
+                              }}
                               className="mt-1 cursor-pointer accent-purple-600"
                             />
                             <div className="flex-1 min-w-0">
@@ -179,6 +210,47 @@ export default function WorkshopSlots({
           </div>
         </div>
       ))}
+
+      {seriesPending && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">This is a series</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                <strong>{seriesPending.activity.name}</strong> is part of the &ldquo;{seriesPending.seriesName}&rdquo; series.
+                Signing up includes all sessions:
+              </p>
+            </div>
+            <ul className="space-y-1.5">
+              {[seriesPending.activity, ...seriesPending.companions].map((a) => (
+                <li key={a.id} className="flex items-start gap-2 text-sm text-gray-800">
+                  <span className="text-purple-500 mt-0.5">•</span>
+                  <span>
+                    <span className="font-semibold">{a.emoji ? `${a.emoji} ` : ""}{a.name}</span>
+                    <span className="text-gray-500"> — {formatDay(a.day)}, {formatTime(a.start_time)}–{formatTime(a.end_time)}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm text-gray-500">Do you want to sign up for the whole series?</p>
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={confirmSeries}
+                className="flex-1 text-white py-2.5 px-4 rounded-full font-bold text-sm shadow-md hover:opacity-90 transition-opacity"
+                style={{ background: "linear-gradient(to right, #e879a8, #7c3aed)" }}
+              >
+                Sign up for the series
+              </button>
+              <button
+                onClick={() => setSeriesPending(null)}
+                className="flex-1 py-2.5 px-4 rounded-full font-semibold text-sm border-2 border-gray-300 text-gray-700 hover:border-gray-400 transition-colors"
+              >
+                Pick another activity
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

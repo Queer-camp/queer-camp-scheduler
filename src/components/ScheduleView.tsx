@@ -263,6 +263,15 @@ function EditMode({
     });
   }
 
+  function handleSeriesConfirm(slotKey: string, activity: ActivityWithSpots, companionSlotKeys: string[]) {
+    setUserSelections((prev) => {
+      const next = { ...prev };
+      next[slotKey] = activity.id;
+      for (const key of companionSlotKeys) delete next[key];
+      return next;
+    });
+  }
+
   async function handleSave() {
     setSubmitting(true);
     setError(null);
@@ -368,6 +377,7 @@ function EditMode({
               userSelections={userSelections}
               effectiveSelections={effectiveSelections}
               onSlotClick={handleSlotClick}
+              onSeriesConfirm={handleSeriesConfirm}
             />
           )}
         </div>

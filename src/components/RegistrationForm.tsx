@@ -98,6 +98,15 @@ export default function RegistrationForm({
     });
   }
 
+  function handleSeriesConfirm(slotKey: string, activity: ActivityWithSpots, companionSlotKeys: string[]) {
+    setUserSelections((prev) => {
+      const next = { ...prev };
+      next[slotKey] = activity.id;
+      for (const key of companionSlotKeys) delete next[key];
+      return next;
+    });
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -401,6 +410,7 @@ export default function RegistrationForm({
               userSelections={userSelections}
               effectiveSelections={effectiveSelections}
               onSlotClick={handleSlotClick}
+              onSeriesConfirm={handleSeriesConfirm}
             />
           )}
         </Card>

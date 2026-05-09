@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { Camp } from "@/types/database";
 
 type CampWithActive = Camp & { is_active: boolean };
@@ -139,7 +140,7 @@ export default function CampsPage() {
               className="p-5 bg-white rounded-lg border border-gray-200 flex items-center justify-between"
             >
               <div>
-                <p className="font-medium">{camp.name}</p>
+                <Link href={`/admin/camps/${camp.id}`} className="font-medium hover:underline">{camp.name}</Link>
                 <p className="text-sm text-gray-500">
                   {camp.start_date} – {camp.end_date}
                 </p>

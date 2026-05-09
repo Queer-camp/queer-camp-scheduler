@@ -110,8 +110,8 @@ function ClosedPage({ campName }: { campName?: string }) {
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 flex flex-col">
       <div className="h-2" style={{ background: `linear-gradient(to right, ${RAINBOW})` }} />
 
-      <div className="flex-1 flex items-center justify-center px-4 py-16">
-        <div className="max-w-lg w-full text-center space-y-6">
+      <div className="px-4 pt-12 pb-16">
+        <div className="max-w-lg mx-auto text-center space-y-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/queer-camp-logo.png" alt="Queer Camp" className="h-28 w-auto mx-auto drop-shadow-md" />
 

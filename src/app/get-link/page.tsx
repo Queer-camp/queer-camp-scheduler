@@ -38,8 +38,8 @@ export default function GetLinkPage() {
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 flex flex-col">
       <div className="h-2" style={{ background: `linear-gradient(to right, ${RAINBOW})` }} />
 
-      <div className="flex-1 flex items-center justify-center px-4 py-16">
-        <div className="max-w-md w-full space-y-8">
+      <div className="px-4 pt-12 pb-16">
+        <div className="max-w-md mx-auto space-y-8">
           {/* Logo */}
           <div className="text-center space-y-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}

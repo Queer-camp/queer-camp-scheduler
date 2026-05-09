@@ -586,28 +586,35 @@ export default function CampDetailPage() {
                 </p>
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">{rosterTarget.name}</h2>
                 {rosterData && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          rosterData.enrolled >= rosterData.capacity ? "bg-red-500" :
-                          rosterData.enrolled / rosterData.capacity >= 0.8 ? "bg-yellow-500" : "bg-green-500"
-                        }`}
-                        style={{ width: `${Math.min(rosterData.enrolled / rosterData.capacity, 1) * 100}%` }}
-                      />
-                    </div>
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                      {rosterData.enrolled} / {rosterData.capacity} enrolled
-                    </span>
-                    {rosterData.enrolled < rosterData.capacity && (
-                      <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
-                        ({rosterData.capacity - rosterData.enrolled} left)
+                  <>
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            rosterData.enrolled >= rosterData.capacity ? "bg-red-500" :
+                            rosterData.enrolled / rosterData.capacity >= 0.8 ? "bg-yellow-500" : "bg-green-500"
+                          }`}
+                          style={{ width: `${Math.min(rosterData.enrolled / rosterData.capacity, 1) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                        {rosterData.enrolled} / {rosterData.capacity} enrolled
                       </span>
-                    )}
+                      {rosterData.enrolled < rosterData.capacity && (
+                        <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                          ({rosterData.capacity - rosterData.enrolled} left)
+                        </span>
+                      )}
+                      {rosterData.enrolled >= rosterData.capacity && (
+                        <span className="text-xs font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">Full</span>
+                      )}
+                    </div>
                     {rosterData.enrolled >= rosterData.capacity && (
-                      <span className="text-xs font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">Full</span>
+                      <p className="mt-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded px-3 py-2 leading-relaxed">
+                        This {rosterTarget.type} is full. Remove or move campers to free up spots, or increase the capacity in {rosterTarget.type} settings.
+                      </p>
                     )}
-                  </div>
+                  </>
                 )}
               </div>
               <button onClick={closeRoster} className="ml-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl leading-none shrink-0">✕</button>
@@ -728,8 +735,22 @@ export default function CampDetailPage() {
 
                   {rosterData.available.length === 0 && rosterData.campers.length > 0 && (
                     <p className="text-xs text-gray-400 dark:text-gray-500 italic border-t border-gray-200 dark:border-gray-700 pt-4">
-                      All campers in this camp are already enrolled.
+                      All campers in this camp are enrolled in this {rosterTarget.type}.
                     </p>
+                  )}
+
+                  {rosterData.available.length === 0 && rosterData.campers.length === 0 && (
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-1">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        No campers have registered for this camp yet.
+                      </p>
+                      <p className="text-sm">
+                        <a href="/admin/campers" className="text-purple-600 dark:text-purple-400 hover:underline font-medium">
+                          Create a new camper →
+                        </a>
+                        <span className="text-gray-400 dark:text-gray-500"> then come back to add them here.</span>
+                      </p>
+                    </div>
                   )}
                 </>
               )}

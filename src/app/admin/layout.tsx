@@ -44,11 +44,11 @@ function AdminNav() {
       <nav className="bg-white/80 backdrop-blur-sm dark:bg-gray-900/80 border-b border-white/60 dark:border-gray-700 px-6 py-3">
       <div className="max-w-5xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <span className="flex items-center gap-2 font-bold text-gray-900 dark:text-white">
+          <Link href="/admin" className="flex items-center gap-2 font-bold text-gray-900 dark:text-white hover:opacity-80 transition-opacity">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/queer-camp-logo.png" alt="" aria-hidden="true" className="h-7 w-auto" />
             Queer Camp Admin
-          </span>
+          </Link>
           <Link href="/admin/camps" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Camps</Link>
           <Link href="/admin/campers" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Campers</Link>
           <Link href="/admin/admins" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Admins</Link>

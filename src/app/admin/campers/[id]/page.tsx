@@ -32,7 +32,8 @@ type Camper = {
   legal_first_name: string;
   legal_last_name: string;
   pronouns: string | null;
-  email: string;
+  email: string | null;
+  token: string;
   track_id: string | null;
   camp_id: string;
   created_at: string;
@@ -187,7 +188,10 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
             {camper.chosen_first_name} {camper.chosen_last_name}
             {camper.pronouns && <span className="text-base font-normal text-gray-400 ml-2">({camper.pronouns})</span>}
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">{camper.email}</p>
+          {camper.email
+            ? <p className="text-sm text-gray-500 mt-0.5">{camper.email}</p>
+            : <p className="text-sm text-amber-600 mt-0.5">No email — print schedule below</p>
+          }
           <p className="text-xs text-gray-400 mt-0.5">
             Legal name: {camper.legal_first_name} {camper.legal_last_name}
           </p>
@@ -197,13 +201,25 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
             </p>
           )}
         </div>
-        <button
-          onClick={resendLink}
-          disabled={resending}
-          className="text-sm bg-black text-white px-4 py-2 rounded hover:bg-gray-800 disabled:opacity-50 shrink-0"
-        >
-          {resendDone ? "Sent!" : resending ? "Sending…" : "Resend schedule link"}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <a
+            href={`/schedule?token=${camper.token}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-50"
+          >
+            Print schedule ↗
+          </a>
+          {camper.email && (
+            <button
+              onClick={resendLink}
+              disabled={resending}
+              className="text-sm bg-black text-white px-4 py-2 rounded hover:bg-gray-800 disabled:opacity-50"
+            >
+              {resendDone ? "Sent!" : resending ? "Sending…" : "Resend link"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Track */}

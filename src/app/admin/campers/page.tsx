@@ -36,6 +36,13 @@ export default function CampersPage() {
   const [loadingCampers, setLoadingCampers] = useState(false);
   const [search, setSearch] = useState("");
 
+  // New camper form
+  const EMPTY_CAMPER_FORM = { chosen_first_name: "", chosen_last_name: "", legal_first_name: "", legal_last_name: "", pronouns: "", email: "" };
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [newForm, setNewForm] = useState(EMPTY_CAMPER_FORM);
+  const [savingNew, setSavingNew] = useState(false);
+  const [newError, setNewError] = useState<string | null>(null);
+
   // Selection mode
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -73,6 +80,26 @@ export default function CampersPage() {
         .then(data => { setCampers(data); setLoadingCampers(false); });
     }
   }, [selectedCampId, showAll]);
+
+  async function handleCreateCamper(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingNew(true); setNewError(null);
+    const res = await fetch("/api/admin/campers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...newForm, camp_id: selectedCampId }),
+    });
+    if (res.ok) {
+      setNewForm(EMPTY_CAMPER_FORM);
+      setShowNewForm(false);
+      const url = `/api/admin/campers?camp_id=${selectedCampId}`;
+      setCampers(await fetch(url).then(r => r.json()));
+    } else {
+      const d = await res.json();
+      setNewError(d.error ?? "Failed to create camper.");
+    }
+    setSavingNew(false);
+  }
 
   function exitSelecting() {
     setSelecting(false);
@@ -142,12 +169,20 @@ export default function CampersPage() {
           {!loadingCampers && (
             <span className="text-sm text-gray-500">{campers.length} registered</span>
           )}
-          {!loadingCampers && campers.length > 0 && (
+          {!loadingCampers && campers.length > 0 && !showAll && (
             <button
               onClick={() => selecting ? exitSelecting() : setSelecting(true)}
               className="text-sm text-gray-600 hover:text-gray-900 underline"
             >
               {selecting ? "Cancel" : <span>Select<ShortcutBadge>S</ShortcutBadge></span>}
+            </button>
+          )}
+          {!showAll && selectedCampId && (
+            <button
+              onClick={() => { setShowNewForm(v => !v); setNewError(null); exitSelecting(); }}
+              className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800"
+            >
+              {showNewForm ? "Cancel" : "New camper"}
             </button>
           )}
         </div>
@@ -176,6 +211,45 @@ export default function CampersPage() {
             {showAll ? "Filter by camp" : "All campers"}
           </button>
         </div>
+      )}
+
+      {/* New camper form */}
+      {showNewForm && !showAll && (
+        <form onSubmit={handleCreateCamper} className="mb-6 p-6 bg-white rounded-lg border border-gray-200 space-y-4">
+          <h2 className="font-semibold">New camper</h2>
+          {newError && <p className="text-sm text-red-600">{newError}</p>}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Chosen first name</label>
+              <input required type="text" value={newForm.chosen_first_name} onChange={e => setNewForm({ ...newForm, chosen_first_name: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black" placeholder="Sparkles" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Chosen last name</label>
+              <input required type="text" value={newForm.chosen_last_name} onChange={e => setNewForm({ ...newForm, chosen_last_name: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black" placeholder="McCrispy" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Legal first name</label>
+              <input required type="text" value={newForm.legal_first_name} onChange={e => setNewForm({ ...newForm, legal_first_name: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Legal last name</label>
+              <input required type="text" value={newForm.legal_last_name} onChange={e => setNewForm({ ...newForm, legal_last_name: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Pronouns <span className="font-normal text-gray-400">(optional)</span></label>
+              <input type="text" value={newForm.pronouns} onChange={e => setNewForm({ ...newForm, pronouns: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black" placeholder="they/them" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="font-normal text-gray-400">(optional — schedule link will be sent if provided)</span></label>
+              <input type="email" value={newForm.email} onChange={e => setNewForm({ ...newForm, email: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black" placeholder="sparkles@example.com" />
+            </div>
+          </div>
+          <button type="submit" disabled={savingNew} className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50">
+            {savingNew ? "Creating…" : "Create camper"}
+          </button>
+        </form>
       )}
 
       <div className="relative mb-6">

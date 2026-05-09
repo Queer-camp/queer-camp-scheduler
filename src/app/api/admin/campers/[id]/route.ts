@@ -17,7 +17,7 @@ export async function GET(
     .from("campers")
     .select(`
       id, chosen_first_name, chosen_last_name, legal_first_name, legal_last_name,
-      pronouns, email, track_id, camp_id, created_at,
+      pronouns, email, token, track_id, camp_id, created_at,
       tracks ( id, name, start_time, end_time ),
       registrations (
         id,

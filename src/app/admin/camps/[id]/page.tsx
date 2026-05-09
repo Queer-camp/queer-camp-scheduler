@@ -9,8 +9,8 @@ type Tab = "tracks" | "activities" | "series";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-const EMPTY_TRACK = { name: "", description: "", capacity: "", start_time: "", end_time: "", emoji: "" };
-const EMPTY_ACTIVITY = { name: "", description: "", capacity: "", day: "", start_time: "", end_time: "", emoji: "", series_id: "" };
+const EMPTY_TRACK = { name: "", description: "", capacity: "", start_time: "09:00", end_time: "12:00", emoji: "" };
+const EMPTY_ACTIVITY = { name: "", description: "", capacity: "", day: "", start_time: "09:00", end_time: "12:00", emoji: "", series_id: "" };
 const EMPTY_SERIES = { name: "", description: "" };
 
 type TrackForm = typeof EMPTY_TRACK;

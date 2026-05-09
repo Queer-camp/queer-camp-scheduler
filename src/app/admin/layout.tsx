@@ -41,7 +41,7 @@ function AdminNav() {
 
   return (
     <>
-      <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-3">
+      <nav className="bg-white/80 backdrop-blur-sm dark:bg-gray-900/80 border-b border-white/60 dark:border-gray-700 px-6 py-3">
       <div className="max-w-5xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-6">
           <span className="flex items-center gap-2 font-bold text-gray-900 dark:text-white">
@@ -76,7 +76,7 @@ function AdminNav() {
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setShowUserMenu(v => !v)}
-              className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium"
+              className="flex items-center gap-1.5 text-sm text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white font-semibold"
             >
               {firstName}
               <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -89,7 +89,7 @@ function AdminNav() {
                 {me && (
                   <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
                     <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{me.name ?? "Admin"}</p>
-                    <p className="text-xs text-gray-400 truncate">{me.email}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{me.email}</p>
                   </div>
                 )}
                 <form action="/api/admin/logout" method="POST">
@@ -109,9 +109,12 @@ function AdminNav() {
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const RAINBOW = "#d93025, #f5810e, #f5c23e, #5dbb46, #4b96f3, #7c3aed, #e879a8";
+
   return (
     <ThemeProvider>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 text-gray-900 dark:text-gray-100">
+        <div className="h-2" style={{ background: `linear-gradient(to right, ${RAINBOW})` }} />
         <AdminNav />
         <main className="max-w-5xl mx-auto px-6 py-8">{children}</main>
       </div>

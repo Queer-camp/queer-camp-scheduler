@@ -1,5 +1,7 @@
+import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase";
 import ScheduleView from "@/components/ScheduleView";
+import { CookieSetter } from "./CookieSetter";
 import type { ActivityWithSpots, TrackWithSpots } from "@/types/database";
 
 export const metadata = { title: "Your Schedule — Queer Camp" };
@@ -9,7 +11,10 @@ export default async function SchedulePage({
 }: {
   searchParams: Promise<{ token?: string }>;
 }) {
-  const { token } = await searchParams;
+  const { token: urlToken } = await searchParams;
+  const cookieStore = await cookies();
+  const cookieToken = cookieStore.get("camper_token")?.value;
+  const token = urlToken || cookieToken;
 
   if (!token) {
     return <InvalidLink />;
@@ -23,7 +28,7 @@ export default async function SchedulePage({
     .eq("token", token)
     .single();
 
-  if (!camper) {
+  if (!camper || !camper.camp_id) {
     return <InvalidLink />;
   }
 
@@ -98,15 +103,19 @@ export default async function SchedulePage({
   );
 
   return (
-    <ScheduleView
-      token={token}
-      camper={camper}
-      campName={camp?.name ?? "Camp"}
-      registeredActivityIds={registeredActivityIds}
-      activities={activitiesWithSpots}
-      tracks={tracksWithSpots}
-      series={series ?? []}
-    />
+    <>
+      {/* Set cookie silently when arriving via magic link URL */}
+      {urlToken && <CookieSetter token={urlToken} />}
+      <ScheduleView
+        token={token}
+        camper={camper}
+        campName={camp?.name ?? "Camp"}
+        registeredActivityIds={registeredActivityIds}
+        activities={activitiesWithSpots}
+        tracks={tracksWithSpots}
+        series={series ?? []}
+      />
+    </>
   );
 }
 
@@ -115,7 +124,7 @@ function InvalidLink() {
     <div className="max-w-md mx-auto py-12 px-4">
       <h1 className="text-2xl font-bold mb-3">Link not found</h1>
       <p className="text-gray-600 mb-6">
-        This link is invalid or has expired.
+        This link is invalid or has expired. Try requesting a new one.
       </p>
       <a href="/get-link" className="underline text-sm">
         Get a new link →

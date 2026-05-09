@@ -237,7 +237,7 @@ export default function CampersPage() {
                       )}
                     </div>
                     <p className="text-sm text-gray-500">{c.email}</p>
-                    {showAll && c.camps && (
+                    {c.camps && (
                       <p className="text-xs text-gray-400">{c.camps.name}</p>
                     )}
                   </div>

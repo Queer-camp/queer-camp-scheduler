@@ -38,6 +38,43 @@ export async function sendAdminLoginLink({
   });
 }
 
+export async function sendAdminInvite({
+  to,
+  name,
+  inviteUrl,
+  invitedBy,
+}: {
+  to: string;
+  name: string;
+  inviteUrl: string;
+  invitedBy: string;
+}) {
+  await transporter.sendMail({
+    from: `Queer Camp <${process.env.SMTP_USER}>`,
+    to,
+    subject: "You're invited to help manage Queer Camp",
+    text: [
+      `Hi ${name},`,
+      "",
+      `${invitedBy} has invited you to be an admin for Queer Camp.`,
+      "",
+      "Click the link below to accept your invitation and log in (expires in 48 hours):",
+      "",
+      `<${inviteUrl}>`,
+      "",
+      "— The Queer Camp Team",
+    ].join("\n"),
+    html: `
+      <p>Hi ${name},</p>
+      <p>${invitedBy} has invited you to be an admin for Queer Camp.</p>
+      <p><a href="${inviteUrl}" style="display:inline-block;padding:10px 20px;background:#000;color:#fff;text-decoration:none;border-radius:4px;font-weight:bold;">Accept invitation</a></p>
+      <p style="font-size:12px;color:#666;">Or copy this link into your browser:<br>${inviteUrl}</p>
+      <p style="font-size:12px;color:#666;">This link expires in 48 hours.</p>
+      <p>— The Queer Camp Team</p>
+    `.trim(),
+  });
+}
+
 export async function sendScheduleLink({
   to,
   displayName,

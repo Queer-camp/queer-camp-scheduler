@@ -4,6 +4,7 @@ import ScheduleView from "@/components/ScheduleView";
 import { CookieSetter } from "./CookieSetter";
 import type { ActivityWithSpots, TrackWithSpots } from "@/types/database";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Your Schedule — Queer Camp" };
 
 export default async function SchedulePage({

@@ -3,6 +3,7 @@ import { getActiveCampId } from "@/lib/constants";
 import RegistrationForm from "@/components/RegistrationForm";
 import type { ActivityWithSpots, TrackWithSpots } from "@/types/database";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Register — Queer Camp" };
 
 export default async function RegisterPage() {

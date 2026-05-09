@@ -133,6 +133,9 @@ export default function CampsPage() {
           <p className="text-sm text-gray-500 mt-0.5">{formatDateRange(camp.start_date, camp.end_date)}</p>
         </div>
         <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
+          <Link href={`/admin/camps/${camp.id}`} className="text-sm font-medium text-gray-900 hover:text-black underline">
+            Manage
+          </Link>
           <button onClick={() => { setEditingCamp(camp); setEditForm({ name: camp.name, start_date: camp.start_date, end_date: camp.end_date, registration_open: camp.registration_open }); setShowForm(false); }} className="text-sm text-gray-600 hover:text-gray-900 underline">
             Edit
           </button>

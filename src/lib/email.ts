@@ -10,6 +10,33 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+export async function sendAdminLoginLink({
+  to,
+  loginUrl,
+}: {
+  to: string;
+  loginUrl: string;
+}) {
+  await transporter.sendMail({
+    from: `Queer Camp <${process.env.SMTP_USER}>`,
+    to,
+    subject: "Queer Camp admin login link",
+    text: [
+      "Here's your Queer Camp admin login link (expires in 15 minutes):",
+      "",
+      loginUrl,
+      "",
+      "If you didn't request this, you can ignore it.",
+      "— The Queer Camp Team",
+    ].join("\n"),
+    html: `
+      <p>Here's your Queer Camp admin login link (expires in 15 minutes):</p>
+      <p><a href="${loginUrl}">${loginUrl}</a></p>
+      <p>If you didn't request this, you can ignore it.<br>— The Queer Camp Team</p>
+    `.trim(),
+  });
+}
+
 export async function sendScheduleLink({
   to,
   displayName,

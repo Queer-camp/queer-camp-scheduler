@@ -1,2 +1,11 @@
-// Swap for the real camp ID once we move past testing
-export const CAMP_ID = "6b79f15e-4058-413e-b068-e6a15c2b4638";
+import { createAdminClient } from "@/lib/supabase";
+
+export async function getActiveCampId(): Promise<string | null> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("camps")
+    .select("id")
+    .eq("is_active", true)
+    .single();
+  return data?.id ?? null;
+}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase";
 import { sendScheduleLink } from "@/lib/email";
-import { CAMP_ID } from "@/lib/constants";
+import { getActiveCampId } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
   const { email } = await req.json();
@@ -10,14 +10,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Email is required." }, { status: 400 });
   }
 
+  const campId = await getActiveCampId();
   const supabase = createAdminClient();
 
-  const { data: camper } = await supabase
+  const query = supabase
     .from("campers")
     .select("token, chosen_first_name, chosen_last_name")
-    .eq("email", email.trim().toLowerCase())
-    .eq("camp_id", CAMP_ID)
-    .single();
+    .eq("email", email.trim().toLowerCase());
+
+  if (campId) query.eq("camp_id", campId);
+
+  const { data: camper } = await query.single();
 
   if (camper) {
     const scheduleUrl = `${process.env.NEXT_PUBLIC_APP_URL}/schedule?token=${camper.token}`;

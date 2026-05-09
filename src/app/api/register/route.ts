@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase";
 import { sendScheduleLink } from "@/lib/email";
-import { CAMP_ID } from "@/lib/constants";
+import { getActiveCampId } from "@/lib/constants";
 
 const REQUIRED_FIELDS = [
   "chosen_first_name",
@@ -23,12 +23,20 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const campId = await getActiveCampId();
+  if (!campId) {
+    return NextResponse.json(
+      { error: "Registration is not currently available." },
+      { status: 503 }
+    );
+  }
+
   const supabase = createAdminClient();
 
   const { data: camper, error: camperError } = await supabase
     .from("campers")
     .insert({
-      camp_id: CAMP_ID,
+      camp_id: campId,
       chosen_first_name: body.chosen_first_name.trim(),
       chosen_last_name: body.chosen_last_name.trim(),
       legal_first_name: body.legal_first_name.trim(),

@@ -1,5 +1,4 @@
 import { createAdminClient } from "@/lib/supabase";
-import { CAMP_ID } from "@/lib/constants";
 import ScheduleView from "@/components/ScheduleView";
 import type { ActivityWithSpots, TrackWithSpots } from "@/types/database";
 
@@ -18,7 +17,6 @@ export default async function SchedulePage({
 
   const supabase = createAdminClient();
 
-  // Look up camper by token
   const { data: camper } = await supabase
     .from("campers")
     .select("id, camp_id, chosen_first_name, chosen_last_name, pronouns, track_id")
@@ -29,7 +27,8 @@ export default async function SchedulePage({
     return <InvalidLink />;
   }
 
-  // Fetch everything in parallel
+  const campId = camper.camp_id;
+
   const [
     { data: registrations },
     { data: activities },
@@ -44,19 +43,18 @@ export default async function SchedulePage({
     supabase
       .from("activities")
       .select("*")
-      .eq("camp_id", CAMP_ID)
+      .eq("camp_id", campId)
       .order("day")
       .order("start_time"),
     supabase
       .from("tracks")
       .select("*")
-      .eq("camp_id", CAMP_ID)
+      .eq("camp_id", campId)
       .order("start_time"),
-    supabase.from("activity_series").select("*").eq("camp_id", CAMP_ID),
-    supabase.from("camps").select("name").eq("id", CAMP_ID).single(),
+    supabase.from("activity_series").select("*").eq("camp_id", campId),
+    supabase.from("camps").select("name").eq("id", campId).single(),
   ]);
 
-  // Compute spots left
   const activityIds = (activities ?? []).map((a) => a.id);
   const [{ data: regCounts }, { data: trackCampers }] = await Promise.all([
     activityIds.length
@@ -68,7 +66,7 @@ export default async function SchedulePage({
     supabase
       .from("campers")
       .select("track_id")
-      .eq("camp_id", CAMP_ID)
+      .eq("camp_id", campId)
       .not("track_id", "is", null),
   ]);
 

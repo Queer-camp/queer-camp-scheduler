@@ -1,14 +1,24 @@
 import { createAdminClient } from "@/lib/supabase";
-import { CAMP_ID } from "@/lib/constants";
+import { getActiveCampId } from "@/lib/constants";
 import RegistrationForm from "@/components/RegistrationForm";
 import type { ActivityWithSpots, TrackWithSpots } from "@/types/database";
 
 export const metadata = { title: "Register — Queer Camp" };
 
 export default async function RegisterPage() {
+  const campId = await getActiveCampId();
+
+  if (!campId) {
+    return (
+      <div className="max-w-xl mx-auto py-12 px-4">
+        <h1 className="text-2xl font-bold mb-2">Registration unavailable</h1>
+        <p className="text-gray-600">There is no active camp at this time.</p>
+      </div>
+    );
+  }
+
   const supabase = createAdminClient();
 
-  // Fetch base data in parallel; registration counts need activity IDs first
   const [
     { data: activities, error: actErr },
     { data: tracks },
@@ -18,19 +28,19 @@ export default async function RegisterPage() {
     supabase
       .from("activities")
       .select("*")
-      .eq("camp_id", CAMP_ID)
+      .eq("camp_id", campId)
       .order("day")
       .order("start_time"),
     supabase
       .from("tracks")
       .select("*")
-      .eq("camp_id", CAMP_ID)
+      .eq("camp_id", campId)
       .order("start_time"),
-    supabase.from("activity_series").select("*").eq("camp_id", CAMP_ID),
+    supabase.from("activity_series").select("*").eq("camp_id", campId),
     supabase
       .from("camps")
       .select("name, registration_open")
-      .eq("id", CAMP_ID)
+      .eq("id", campId)
       .single(),
   ]);
 
@@ -51,7 +61,6 @@ export default async function RegisterPage() {
     );
   }
 
-  // Fetch registration + track occupancy counts using admin client
   const activityIds = (activities ?? []).map((a) => a.id);
   const [{ data: regRows }, { data: trackCamperRows }] = await Promise.all([
     activityIds.length
@@ -63,11 +72,10 @@ export default async function RegisterPage() {
     supabase
       .from("campers")
       .select("track_id")
-      .eq("camp_id", CAMP_ID)
+      .eq("camp_id", campId)
       .not("track_id", "is", null),
   ]);
 
-  // Build spots_left counts
   const regCountByActivity: Record<string, number> = {};
   for (const r of regRows ?? []) {
     regCountByActivity[r.activity_id] =

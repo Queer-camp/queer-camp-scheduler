@@ -13,7 +13,8 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from("campers")
     .select(`
-      id, chosen_first_name, chosen_last_name, pronouns, email, track_id, created_at,
+      id, chosen_first_name, chosen_last_name, pronouns, email, track_id, camp_id, created_at,
+      camps ( name ),
       tracks ( name ),
       registrations ( id )
     `)

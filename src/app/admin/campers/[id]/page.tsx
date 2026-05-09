@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { formatTime, formatDay } from "@/lib/format";
+import { formatTime, formatDay, formatDateRange } from "@/lib/format";
 
 type Activity = {
   id: string;
@@ -49,11 +49,21 @@ type CampActivity = {
   emoji: string | null;
 };
 
+type Camp = {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  archived: boolean;
+};
+
 export default function CamperDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [camper, setCamper] = useState<Camper | null>(null);
   const [allActivities, setAllActivities] = useState<CampActivity[]>([]);
   const [allTracks, setAllTracks] = useState<Track[]>([]);
+  const [allCamps, setAllCamps] = useState<Camp[]>([]);
   const [loading, setLoading] = useState(true);
   const [resending, setResending] = useState(false);
   const [resendDone, setResendDone] = useState(false);
@@ -63,11 +73,18 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
   const [editingTrack, setEditingTrack] = useState(false);
   const [selectedTrackId, setSelectedTrackId] = useState<string>("");
   const [savingTrack, setSavingTrack] = useState(false);
+  const [movingCamp, setMovingCamp] = useState(false);
+  const [selectedCampId, setSelectedCampId] = useState<string>("");
+  const [confirmMove, setConfirmMove] = useState(false);
+  const [savingMove, setSavingMove] = useState(false);
 
   async function load() {
-    const res = await fetch(`/api/admin/campers/${id}`);
-    if (res.ok) {
-      const data: Camper = await res.json();
+    const [camperRes, campsRes] = await Promise.all([
+      fetch(`/api/admin/campers/${id}`),
+      fetch("/api/admin/camps"),
+    ]);
+    if (camperRes.ok) {
+      const data: Camper = await camperRes.json();
       setCamper(data);
       setSelectedTrackId(data.track_id ?? "");
       const [actRes, trackRes] = await Promise.all([
@@ -77,6 +94,7 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
       if (actRes.ok) setAllActivities(await actRes.json());
       if (trackRes.ok) setAllTracks(await trackRes.json());
     }
+    if (campsRes.ok) setAllCamps(await campsRes.json());
     setLoading(false);
   }
 
@@ -99,6 +117,21 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
     });
     setSavingTrack(false);
     setEditingTrack(false);
+    await load();
+  }
+
+  async function moveCamp() {
+    if (!selectedCampId) return;
+    setSavingMove(true);
+    await fetch(`/api/admin/campers/${id}/move`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ camp_id: selectedCampId }),
+    });
+    setSavingMove(false);
+    setMovingCamp(false);
+    setConfirmMove(false);
+    setSelectedCampId("");
     await load();
   }
 
@@ -126,6 +159,8 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
 
   const registeredIds = new Set(camper.registrations.map(r => r.activities.id));
   const unregisteredActivities = allActivities.filter(a => !registeredIds.has(a.id));
+  const otherCamps = allCamps.filter(c => c.id !== camper.camp_id && !c.archived);
+  const currentCamp = allCamps.find(c => c.id === camper.camp_id);
 
   const byDay: Record<string, Activity[]> = {};
   for (const reg of camper.registrations) {
@@ -156,6 +191,11 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
           <p className="text-xs text-gray-400 mt-0.5">
             Legal name: {camper.legal_first_name} {camper.legal_last_name}
           </p>
+          {currentCamp && (
+            <p className="text-xs text-gray-400 mt-0.5">
+              Camp: {currentCamp.name} — {formatDateRange(currentCamp.start_date, currentCamp.end_date)}
+            </p>
+          )}
         </div>
         <button
           onClick={resendLink}
@@ -215,7 +255,7 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
       </section>
 
       {/* Activities */}
-      <section>
+      <section className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Activities</h2>
           <button
@@ -281,6 +321,64 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
           </div>
         )}
       </section>
+
+      {/* Move to camp */}
+      {otherCamps.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Move to camp</h2>
+            {!movingCamp && (
+              <button onClick={() => setMovingCamp(true)} className="text-sm text-gray-600 hover:text-gray-900 underline">
+                Move
+              </button>
+            )}
+          </div>
+          {movingCamp && (
+            <div className="bg-white rounded-lg border border-gray-200 px-5 py-4 space-y-4">
+              <select
+                value={selectedCampId}
+                onChange={e => { setSelectedCampId(e.target.value); setConfirmMove(false); }}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+              >
+                <option value="">Select a camp…</option>
+                {otherCamps.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} — {formatDateRange(c.start_date, c.end_date)}{c.is_active ? " (active)" : ""}
+                  </option>
+                ))}
+              </select>
+
+              {selectedCampId && !confirmMove && (
+                <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-4 py-3">
+                  This will remove their current track and all activity registrations. Their name, email, and pronouns will carry over.{" "}
+                  <button onClick={() => setConfirmMove(true)} className="font-medium underline">Confirm move</button>
+                </p>
+              )}
+
+              {confirmMove && (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={moveCamp}
+                    disabled={savingMove}
+                    className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
+                  >
+                    {savingMove ? "Moving…" : "Move camper"}
+                  </button>
+                  <button onClick={() => { setMovingCamp(false); setSelectedCampId(""); setConfirmMove(false); }} className="text-sm text-gray-500 hover:text-gray-900 underline">
+                    Cancel
+                  </button>
+                </div>
+              )}
+
+              {!selectedCampId && (
+                <button onClick={() => setMovingCamp(false)} className="text-sm text-gray-500 hover:text-gray-900 underline">
+                  Cancel
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }

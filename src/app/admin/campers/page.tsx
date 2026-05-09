@@ -19,6 +19,8 @@ type CamperRow = {
   chosen_last_name: string;
   pronouns: string | null;
   email: string;
+  camp_id: string;
+  camps: { name: string } | null;
   tracks: { name: string } | null;
   registrations: { id: string }[];
 };
@@ -26,6 +28,7 @@ type CamperRow = {
 export default function CampersPage() {
   const [camps, setCamps] = useState<Camp[]>([]);
   const [selectedCampId, setSelectedCampId] = useState<string>("");
+  const [showAll, setShowAll] = useState(false);
   const [campers, setCampers] = useState<CamperRow[]>([]);
   const [loadingCamps, setLoadingCamps] = useState(true);
   const [loadingCampers, setLoadingCampers] = useState(false);
@@ -43,12 +46,19 @@ export default function CampersPage() {
   }, []);
 
   useEffect(() => {
-    if (!selectedCampId) return;
-    setLoadingCampers(true);
-    fetch(`/api/admin/campers?camp_id=${selectedCampId}`)
-      .then(r => r.json())
-      .then(data => { setCampers(data); setLoadingCampers(false); });
-  }, [selectedCampId]);
+    if (showAll) {
+      setLoadingCampers(true);
+      fetch("/api/admin/campers")
+        .then(r => r.json())
+        .then(data => { setCampers(data); setLoadingCampers(false); });
+    } else {
+      if (!selectedCampId) return;
+      setLoadingCampers(true);
+      fetch(`/api/admin/campers?camp_id=${selectedCampId}`)
+        .then(r => r.json())
+        .then(data => { setCampers(data); setLoadingCampers(false); });
+    }
+  }, [selectedCampId, showAll]);
 
   const filtered = campers.filter(c => {
     const q = search.toLowerCase();
@@ -59,31 +69,37 @@ export default function CampersPage() {
     );
   });
 
-  const selectedCamp = camps.find(c => c.id === selectedCampId);
-
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Campers</h1>
-        {!loadingCampers && selectedCampId && (
+        {!loadingCampers && (
           <span className="text-sm text-gray-500">{campers.length} registered</span>
         )}
       </div>
 
-      {/* Camp selector */}
+      {/* Camp selector / All toggle */}
       {!loadingCamps && (
-        <div className="mb-6">
-          <select
-            value={selectedCampId}
-            onChange={e => { setSelectedCampId(e.target.value); setSearch(""); }}
-            className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black bg-white"
+        <div className="flex items-center gap-3 mb-6">
+          {!showAll && (
+            <select
+              value={selectedCampId}
+              onChange={e => { setSelectedCampId(e.target.value); setSearch(""); }}
+              className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black bg-white"
+            >
+              {camps.filter(c => !c.archived).map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name} — {formatDateRange(c.start_date, c.end_date)}{c.is_active ? " (active)" : ""}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={() => { setShowAll(!showAll); setSearch(""); }}
+            className="text-sm text-gray-600 hover:text-gray-900 underline"
           >
-            {camps.filter(c => !c.archived).map(c => (
-              <option key={c.id} value={c.id}>
-                {c.name} — {formatDateRange(c.start_date, c.end_date)}{c.is_active ? " (active)" : ""}
-              </option>
-            ))}
-          </select>
+            {showAll ? "Filter by camp" : "All campers"}
+          </button>
         </div>
       )}
 
@@ -97,11 +113,9 @@ export default function CampersPage() {
 
       {loadingCamps || loadingCampers ? (
         <p className="text-gray-500 text-sm">Loading…</p>
-      ) : !selectedCampId ? (
-        <p className="text-gray-500 text-sm">Select a camp above.</p>
       ) : filtered.length === 0 ? (
         <p className="text-gray-500 text-sm">
-          {search ? "No campers match your search." : "No campers registered for this camp yet."}
+          {search ? "No campers match your search." : "No campers registered yet."}
         </p>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
@@ -121,6 +135,9 @@ export default function CampersPage() {
                   )}
                 </div>
                 <p className="text-sm text-gray-500">{c.email}</p>
+                {showAll && c.camps && (
+                  <p className="text-xs text-gray-400">{c.camps.name}</p>
+                )}
               </div>
               <div className="text-right shrink-0 ml-4">
                 <p className="text-sm text-gray-700">{c.tracks?.name ?? <span className="text-gray-400">No track</span>}</p>

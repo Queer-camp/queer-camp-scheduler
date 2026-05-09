@@ -115,10 +115,10 @@ export default function CampsPage() {
     }
 
     return (
-      <div className={`p-5 bg-white rounded-lg border flex items-start justify-between gap-4 ${past ? "border-gray-200 opacity-60" : "border-gray-200"}`}>
+      <div className="p-5 bg-white rounded-lg border border-gray-200 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Link href={`/admin/camps/${camp.id}`} className="font-medium hover:underline">{camp.name}</Link>
+            <Link href={`/admin/camps/${camp.id}`} className={`font-medium hover:underline ${past || camp.archived ? "text-gray-400" : ""}`}>{camp.name}</Link>
             {camp.is_active && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Active</span>}
             {past && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Past</span>}
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${camp.registration_open ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>

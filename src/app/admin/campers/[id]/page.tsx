@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatTime, formatDay, formatDateRange } from "@/lib/format";
 
@@ -61,6 +62,7 @@ type Camp = {
 
 export default function CamperDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const [camper, setCamper] = useState<Camper | null>(null);
   const [allActivities, setAllActivities] = useState<CampActivity[]>([]);
   const [allTracks, setAllTracks] = useState<Track[]>([]);
@@ -78,6 +80,8 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
   const [selectedCampId, setSelectedCampId] = useState<string>("");
   const [confirmMove, setConfirmMove] = useState(false);
   const [savingMove, setSavingMove] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   async function load() {
     const [camperRes, campsRes] = await Promise.all([
@@ -134,6 +138,12 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
     setConfirmMove(false);
     setSelectedCampId("");
     await load();
+  }
+
+  async function removeCamper() {
+    setRemoving(true);
+    await fetch(`/api/admin/campers/${id}`, { method: "DELETE" });
+    router.push("/admin/campers");
   }
 
   async function removeRegistration(activityId: string) {
@@ -395,6 +405,42 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
           )}
         </section>
       )}
+
+      {/* Remove camper */}
+      <section className="mt-12 pt-8 border-t border-gray-200">
+        {!confirmRemove ? (
+          <button
+            onClick={() => setConfirmRemove(true)}
+            className="text-sm text-red-500 hover:text-red-700 underline"
+          >
+            Remove camper from camp
+          </button>
+        ) : (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg space-y-3">
+            <p className="text-sm text-red-700 font-medium">
+              Remove {camper.chosen_first_name} {camper.chosen_last_name}?
+            </p>
+            <p className="text-sm text-red-600">
+              This will delete their account and remove them from all tracks, activities, and series. This cannot be undone.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={removeCamper}
+                disabled={removing}
+                className="text-sm bg-red-600 text-white px-4 py-2 rounded font-medium hover:bg-red-700 disabled:opacity-50"
+              >
+                {removing ? "Removing…" : "Yes, remove camper"}
+              </button>
+              <button
+                onClick={() => setConfirmRemove(false)}
+                className="text-sm text-gray-500 hover:text-gray-900 underline"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

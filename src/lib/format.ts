@@ -22,7 +22,8 @@ export function formatDateRange(start: string, end: string): string {
 }
 
 export function formatDay(day: string): string {
-  // Parse as local midnight to avoid timezone off-by-one
+  // Day is stored as a name ("Monday") or ISO date ("2026-03-15")
+  if (!day.includes("-")) return day;
   const [year, month, date] = day.split("-").map(Number);
   return new Date(year, month - 1, date).toLocaleDateString("en-US", {
     weekday: "long",

@@ -66,7 +66,7 @@ export default function WorkshopSlots({
     <div className="space-y-8">
       {days.map(([day, slots]) => (
         <div key={day}>
-          <h3 className="font-semibold text-gray-800 mb-3">{formatDay(day)}</h3>
+          <h3 className="font-bold text-gray-900 text-base mb-3">{formatDay(day)}</h3>
           <div className="space-y-3">
             {slots.map((slot) => {
               const isLocked =
@@ -80,23 +80,23 @@ export default function WorkshopSlots({
                 : null;
 
               return (
-                <div key={slot.key} className="border rounded-lg p-4">
-                  <p className="text-xs font-medium text-gray-500 mb-3 uppercase tracking-wide">
+                <div key={slot.key} className="border-2 border-gray-200 rounded-xl p-4 bg-white">
+                  <p className="text-xs font-bold text-gray-600 mb-3 uppercase tracking-wide">
                     {formatTime(slot.startTime)} – {formatTime(slot.endTime)}
                   </p>
 
                   {isLocked ? (
-                    <div className="flex items-start gap-2 bg-indigo-50 border border-indigo-100 rounded-md p-3">
-                      <span className="text-indigo-500 text-sm mt-0.5">✓</span>
+                    <div className="flex items-start gap-2 bg-indigo-50 border-2 border-indigo-200 rounded-lg p-3">
+                      <span className="text-indigo-600 font-bold text-sm mt-0.5">✓</span>
                       <div>
-                        <p className="text-sm font-medium text-indigo-900">
+                        <p className="text-sm font-semibold text-indigo-900">
                           {lockedActivity?.emoji
                             ? `${lockedActivity.emoji} `
                             : ""}
                           {lockedActivity?.name}
                         </p>
                         {lockedSeriesName && (
-                          <p className="text-xs text-indigo-600 mt-0.5">
+                          <p className="text-xs text-indigo-700 mt-0.5">
                             Included with &ldquo;{lockedSeriesName}&rdquo; —
                             deselect that workshop above to change
                           </p>
@@ -118,12 +118,12 @@ export default function WorkshopSlots({
                         return (
                           <label
                             key={activity.id}
-                            className={`flex items-start gap-3 p-3 rounded-md border transition-colors ${
+                            className={`flex items-start gap-3 p-3 rounded-lg border-2 transition-colors ${
                               isFull
-                                ? "opacity-50 cursor-not-allowed bg-gray-50"
+                                ? "opacity-60 cursor-not-allowed bg-gray-50 border-gray-200"
                                 : isSelected
-                                  ? "border-black bg-gray-50 cursor-pointer"
-                                  : "border-gray-200 hover:border-gray-400 cursor-pointer"
+                                  ? "border-purple-500 bg-purple-50 cursor-pointer"
+                                  : "border-gray-300 bg-white hover:border-purple-300 hover:bg-purple-50/30 cursor-pointer"
                             }`}
                           >
                             <input
@@ -136,41 +136,38 @@ export default function WorkshopSlots({
                               onClick={() =>
                                 !isFull && onSlotClick(slot.key, activity)
                               }
-                              className="mt-1 cursor-pointer"
+                              className="mt-1 cursor-pointer accent-purple-600"
                             />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-medium">
+                                <span className="text-sm font-semibold text-gray-900">
                                   {activity.emoji ? `${activity.emoji} ` : ""}
                                   {activity.name}
                                 </span>
                                 {actSeries && (
-                                  <span className="text-xs text-gray-400 italic">
+                                  <span className="text-xs text-gray-600 font-medium bg-gray-100 px-1.5 py-0.5 rounded">
                                     {actSeries.name}
                                   </span>
                                 )}
                               </div>
                               {activity.description && (
-                                <p className="text-xs text-gray-500 mt-0.5">
+                                <p className="text-xs text-gray-700 mt-0.5">
                                   {activity.description}
                                 </p>
                               )}
-                              <p
-                                className={`text-xs mt-1 font-medium ${
-                                  isFull
-                                    ? "text-red-500"
-                                    : isLow
-                                      ? "text-amber-600"
-                                      : "text-gray-400"
-                                }`}
-                              >
-                                {isFull
-                                  ? "Full"
-                                  : isLow
-                                    ? `${activity.spots_left} spot${activity.spots_left === 1 ? "" : "s"} left!`
-                                    : `${activity.spots_left} of ${activity.capacity} spots left`}
+                              <p className="text-xs mt-1 font-semibold">
+                                {isFull ? (
+                                  <span className="text-red-700">⛔ Full</span>
+                                ) : isLow ? (
+                                  <span className="text-amber-700">⚠ Only {activity.spots_left} spot{activity.spots_left === 1 ? "" : "s"} left!</span>
+                                ) : (
+                                  <span className="text-gray-500">{activity.spots_left} spots left</span>
+                                )}
                               </p>
                             </div>
+                            {isSelected && (
+                              <span className="text-purple-600 font-bold text-lg mt-0.5" aria-label="Selected">✓</span>
+                            )}
                           </label>
                         );
                       })}

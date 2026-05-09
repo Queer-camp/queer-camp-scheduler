@@ -80,7 +80,7 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
   const [selectedCampId, setSelectedCampId] = useState<string>("");
   const [confirmMove, setConfirmMove] = useState(false);
   const [savingMove, setSavingMove] = useState(false);
-  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<"camp" | "delete" | null>(null);
   const [removing, setRemoving] = useState(false);
 
   async function load() {
@@ -140,7 +140,13 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
     await load();
   }
 
-  async function removeCamper() {
+  async function removeFromCamp() {
+    setRemoving(true);
+    await fetch(`/api/admin/campers/${id}/remove-from-camp`, { method: "POST" });
+    router.push("/admin/campers");
+  }
+
+  async function deleteCamper() {
     setRemoving(true);
     await fetch(`/api/admin/campers/${id}`, { method: "DELETE" });
     router.push("/admin/campers");
@@ -406,37 +412,47 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
         </section>
       )}
 
-      {/* Remove camper */}
-      <section className="mt-12 pt-8 border-t border-gray-200">
-        {!confirmRemove ? (
-          <button
-            onClick={() => setConfirmRemove(true)}
-            className="text-sm text-red-500 hover:text-red-700 underline"
-          >
-            Remove camper from camp
-          </button>
-        ) : (
+      {/* Danger zone */}
+      <section className="mt-12 pt-8 border-t border-gray-200 space-y-3">
+        {confirmRemove === null && (
+          <div className="flex items-center gap-6">
+            <button
+              onClick={() => setConfirmRemove("camp")}
+              className="text-sm text-red-500 hover:text-red-700 underline"
+            >
+              Remove from camp
+            </button>
+            <button
+              onClick={() => setConfirmRemove("delete")}
+              className="text-sm text-red-500 hover:text-red-700 underline"
+            >
+              Delete camper
+            </button>
+          </div>
+        )}
+
+        {confirmRemove === "camp" && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-lg space-y-3">
-            <p className="text-sm text-red-700 font-medium">
-              Remove {camper.chosen_first_name} {camper.chosen_last_name}?
-            </p>
-            <p className="text-sm text-red-600">
-              This will delete their account and remove them from all tracks, activities, and series. This cannot be undone.
-            </p>
+            <p className="text-sm text-red-700 font-medium">Remove {camper.chosen_first_name} {camper.chosen_last_name} from this camp?</p>
+            <p className="text-sm text-red-600">Clears their track and all activity registrations. Their record is kept — you can move them to another camp later.</p>
             <div className="flex items-center gap-3">
-              <button
-                onClick={removeCamper}
-                disabled={removing}
-                className="text-sm bg-red-600 text-white px-4 py-2 rounded font-medium hover:bg-red-700 disabled:opacity-50"
-              >
-                {removing ? "Removing…" : "Yes, remove camper"}
+              <button onClick={removeFromCamp} disabled={removing} className="text-sm bg-red-600 text-white px-4 py-2 rounded font-medium hover:bg-red-700 disabled:opacity-50">
+                {removing ? "Removing…" : "Remove from camp"}
               </button>
-              <button
-                onClick={() => setConfirmRemove(false)}
-                className="text-sm text-gray-500 hover:text-gray-900 underline"
-              >
-                Cancel
+              <button onClick={() => setConfirmRemove(null)} className="text-sm text-gray-500 hover:text-gray-900 underline">Cancel</button>
+            </div>
+          </div>
+        )}
+
+        {confirmRemove === "delete" && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg space-y-3">
+            <p className="text-sm text-red-700 font-medium">Permanently delete {camper.chosen_first_name} {camper.chosen_last_name}?</p>
+            <p className="text-sm text-red-600">Deletes their account and all registrations. This cannot be undone.</p>
+            <div className="flex items-center gap-3">
+              <button onClick={deleteCamper} disabled={removing} className="text-sm bg-red-600 text-white px-4 py-2 rounded font-medium hover:bg-red-700 disabled:opacity-50">
+                {removing ? "Deleting…" : "Delete camper"}
               </button>
+              <button onClick={() => setConfirmRemove(null)} className="text-sm text-gray-500 hover:text-gray-900 underline">Cancel</button>
             </div>
           </div>
         )}

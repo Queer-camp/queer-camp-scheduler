@@ -246,9 +246,14 @@ export default function CampersPage() {
               <input type="email" value={newForm.email} onChange={e => setNewForm({ ...newForm, email: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black" placeholder="sparkles@example.com" />
             </div>
           </div>
-          <button type="submit" disabled={savingNew} className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50">
-            {savingNew ? "Creating…" : "Create camper"}
-          </button>
+          <div className="flex items-center gap-3">
+            <button type="submit" disabled={savingNew} className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50">
+              {savingNew ? "Creating…" : "Create camper"}
+            </button>
+            <button type="button" onClick={() => { setShowNewForm(false); setNewForm(EMPTY_CAMPER_FORM); setNewError(null); }} className="text-sm text-gray-500 hover:text-gray-900 underline">
+              Discard
+            </button>
+          </div>
         </form>
       )}
 

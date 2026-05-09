@@ -5,6 +5,22 @@ export function formatTime(time: string): string {
   return `${hour}:${m.toString().padStart(2, "0")} ${ampm}`;
 }
 
+export function formatDateRange(start: string, end: string): string {
+  const [sy, sm, sd] = start.split("-").map(Number);
+  const [ey, em, ed] = end.split("-").map(Number);
+  const s = new Date(sy, sm - 1, sd);
+  const e = new Date(ey, em - 1, ed);
+  const month = s.toLocaleDateString("en-US", { month: "long" });
+  const endMonth = e.toLocaleDateString("en-US", { month: "long" });
+  if (sm === em && sy === ey) {
+    return `${month} ${sd}–${ed}, ${sy}`;
+  }
+  if (sy === ey) {
+    return `${month} ${sd} – ${endMonth} ${ed}, ${sy}`;
+  }
+  return `${month} ${sd}, ${sy} – ${endMonth} ${ed}, ${ey}`;
+}
+
 export function formatDay(day: string): string {
   // Parse as local midnight to avoid timezone off-by-one
   const [year, month, date] = day.split("-").map(Number);

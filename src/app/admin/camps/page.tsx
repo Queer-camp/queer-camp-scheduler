@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { formatDateRange } from "@/lib/format";
 import type { Camp } from "@/types/database";
 
 type FullCamp = Camp & { is_active: boolean; archived: boolean };
@@ -129,7 +130,7 @@ export default function CampsPage() {
               {camp.registration_open ? "Registration open" : "Registration closed"}
             </span>
           </div>
-          <p className="text-sm text-gray-500 mt-0.5">{camp.start_date} – {camp.end_date}</p>
+          <p className="text-sm text-gray-500 mt-0.5">{formatDateRange(camp.start_date, camp.end_date)}</p>
         </div>
         <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
           <button onClick={() => { setEditingCamp(camp); setEditForm({ name: camp.name, start_date: camp.start_date, end_date: camp.end_date, registration_open: camp.registration_open }); setShowForm(false); }} className="text-sm text-gray-600 hover:text-gray-900 underline">

@@ -42,12 +42,15 @@ export async function sendAdminInvite({
   name,
   inviteUrl,
   invitedBy,
+  role,
 }: {
   to: string;
   name: string;
   inviteUrl: string;
   invitedBy: string;
+  role: "admin" | "staff";
 }) {
+  const roleLabel = role === "staff" ? "a staff member" : "an admin";
   await transporter.sendMail({
     from: `Queer Camp <${process.env.SMTP_USER}>`,
     to,
@@ -55,7 +58,7 @@ export async function sendAdminInvite({
     text: [
       `Hi ${name},`,
       "",
-      `${invitedBy} has invited you to be an admin for Queer Camp.`,
+      `${invitedBy} has invited you to be ${roleLabel} for Queer Camp.`,
       "",
       "Click the link below to accept your invitation and log in (expires in 48 hours):",
       "",
@@ -65,7 +68,7 @@ export async function sendAdminInvite({
     ].join("\n"),
     html: `
       <p>Hi ${name},</p>
-      <p>${invitedBy} has invited you to be an admin for Queer Camp.</p>
+      <p>${invitedBy} has invited you to be ${roleLabel} for Queer Camp.</p>
       <p><a href="${inviteUrl}" style="display:inline-block;padding:11px 28px;background:linear-gradient(to right,#e879a8,#7c3aed);color:#fff;text-decoration:none;border-radius:999px;font-weight:bold;font-size:15px;">Accept invitation</a></p>
       <p style="font-size:12px;color:#666;">This link expires in 48 hours.</p>
       <p>— The Queer Camp Team</p>

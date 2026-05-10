@@ -76,6 +76,7 @@ export async function POST(req: NextRequest) {
       name: name.trim(),
       inviteUrl,
       invitedBy: session.email,
+      role: resolvedRole,
     });
   } catch (err) {
     console.error("Failed to send invite email:", err);

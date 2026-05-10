@@ -138,17 +138,19 @@ function ViewMode({
 
         {/* Track */}
         {currentTrack && (
-          <div className="mt-6 p-4 bg-white print:bg-white rounded-xl border-2 border-purple-200 print:border print:border-gray-300">
-            <p className="text-xs font-bold text-purple-500 print:text-gray-500 uppercase tracking-wide mb-1">
-              Morning Track
-            </p>
-            <p className="font-semibold text-gray-900">
-              {currentTrack.emoji ? `${currentTrack.emoji} ` : ""}
-              {currentTrack.name}
-            </p>
-            <p className="text-sm text-gray-500 print:text-gray-600">
-              {formatTime(currentTrack.start_time)} – {formatTime(currentTrack.end_time)}
-            </p>
+          <div className="mt-6 bg-white print:bg-white rounded-xl border border-gray-200 print:border-gray-300 border-l-4 border-l-purple-500 overflow-hidden">
+            <div className="p-4">
+              <p className="text-xs font-bold text-purple-600 print:text-gray-500 uppercase tracking-wide mb-1">
+                Morning Track
+              </p>
+              <p className="font-semibold text-gray-900 text-base">
+                {currentTrack.emoji ? `${currentTrack.emoji} ` : ""}
+                {currentTrack.name}
+              </p>
+              <p className="text-sm text-gray-600 print:text-gray-600 mt-0.5 font-medium">
+                {formatTime(currentTrack.start_time)} – {formatTime(currentTrack.end_time)}
+              </p>
+            </div>
           </div>
         )}
 
@@ -177,18 +179,23 @@ function ViewMode({
                       return (
                         <div
                           key={`standing-${ev.id}`}
-                          className="flex items-start gap-3 p-3 rounded-xl bg-amber-50 print:bg-white border border-amber-200 print:border-gray-300"
+                          className="flex items-stretch rounded-xl bg-white print:bg-white border border-gray-200 print:border-gray-300 border-l-4 border-l-amber-500 overflow-hidden"
                         >
-                          <div className="text-xs text-amber-600 print:text-gray-600 w-20 pt-0.5 shrink-0 font-medium">
-                            {formatTime(ev.start_time)}
-                            <br />
-                            {formatTime(ev.end_time)}
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-amber-900 print:text-gray-900">
-                              {ev.emoji ? `${ev.emoji} ` : ""}
-                              {ev.name}
-                            </p>
+                          <div className="flex items-start gap-3 p-3 flex-1">
+                            <div className="text-sm font-bold text-amber-700 print:text-gray-700 w-20 shrink-0 leading-snug">
+                              {formatTime(ev.start_time)}
+                              <br />
+                              <span className="text-xs font-medium opacity-70">{formatTime(ev.end_time)}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold uppercase tracking-wide text-amber-600 print:text-gray-500 mb-0.5">
+                                Camp-wide
+                              </p>
+                              <p className="text-base font-semibold text-gray-900">
+                                {ev.emoji ? `${ev.emoji} ` : ""}
+                                {ev.name}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       );
@@ -200,21 +207,26 @@ function ViewMode({
                     return (
                       <div
                         key={a.id}
-                        className="flex items-start gap-3 p-3 rounded-xl bg-white print:bg-white border border-gray-200 print:border-gray-300"
+                        className="flex items-stretch rounded-xl bg-white print:bg-white border border-gray-200 print:border-gray-300 border-l-4 border-l-pink-500 overflow-hidden"
                       >
-                        <div className="text-xs text-gray-400 print:text-gray-600 w-20 pt-0.5 shrink-0 font-medium">
-                          {formatTime(a.start_time)}
-                          <br />
-                          {formatTime(a.end_time)}
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900">
-                            {a.emoji ? `${a.emoji} ` : ""}
-                            {a.name}
-                          </p>
-                          {actSeries && (
-                            <p className="text-xs text-gray-500 mt-0.5">{actSeries.name}</p>
-                          )}
+                        <div className="flex items-start gap-3 p-3 flex-1">
+                          <div className="text-sm font-bold text-pink-600 print:text-gray-700 w-20 shrink-0 leading-snug">
+                            {formatTime(a.start_time)}
+                            <br />
+                            <span className="text-xs font-medium opacity-70">{formatTime(a.end_time)}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold uppercase tracking-wide text-pink-600 print:text-gray-500 mb-0.5">
+                              Workshop
+                            </p>
+                            <p className="text-base font-semibold text-gray-900">
+                              {a.emoji ? `${a.emoji} ` : ""}
+                              {a.name}
+                            </p>
+                            {actSeries && (
+                              <p className="text-xs text-gray-500 mt-0.5">{actSeries.name}</p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );

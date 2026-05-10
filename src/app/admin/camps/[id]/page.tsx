@@ -738,7 +738,17 @@ export default function CampDetailPage() {
                   </>
                 )}
               </div>
-              <button onClick={closeRoster} className="ml-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl leading-none shrink-0">✕</button>
+              <div className="ml-4 flex items-center gap-3 shrink-0">
+                <a
+                  href={`/print/${rosterTarget.type}/${rosterTarget.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-medium"
+                >
+                  Print roster
+                </a>
+                <button onClick={closeRoster} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl leading-none">✕</button>
+              </div>
             </div>
 
             {/* Body */}

@@ -186,6 +186,12 @@ export default function ActivitySlots({
                                   {activity.description}
                                 </p>
                               )}
+                              {(activity.location || activity.organizer) && (
+                                <p className="text-xs text-gray-500 mt-0.5 flex flex-wrap gap-x-2">
+                                  {activity.location && <span>📍 {activity.location}</span>}
+                                  {activity.organizer && <span>👤 {activity.organizer}</span>}
+                                </p>
+                              )}
                               <p className="text-xs mt-1 font-semibold">
                                 {isFull ? (
                                   <span className="text-red-700">⛔ Full</span>

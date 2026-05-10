@@ -345,6 +345,12 @@ export default function CampDetailPage() {
 
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const newMenuRef = useRef<HTMLDivElement>(null);
+  const [showImport, setShowImport] = useState(false);
+  const [otherCamps, setOtherCamps] = useState<{ id: string; name: string }[]>([]);
+  const [importSourceId, setImportSourceId] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ imported: number; skipped: number } | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
   useEffect(() => {
     function onDown(e: MouseEvent) {
       if (newMenuRef.current && !newMenuRef.current.contains(e.target as Node)) setNewMenuOpen(false);
@@ -524,6 +530,37 @@ export default function CampDetailPage() {
     onSuccess();
   }
 
+  async function openImport() {
+    setShowImport(true);
+    setImportResult(null);
+    setImportError(null);
+    setImportSourceId("");
+    const res = await fetch("/api/admin/camps");
+    if (res.ok) {
+      const all: { id: string; name: string }[] = await res.json();
+      setOtherCamps(all.filter(c => c.id !== campId));
+    }
+  }
+
+  async function runImport() {
+    if (!importSourceId) return;
+    setImporting(true);
+    setImportError(null);
+    setImportResult(null);
+    const res = await fetch(`/api/admin/camps/${campId}/import-campers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source_camp_id: importSourceId }),
+    });
+    if (res.ok) {
+      setImportResult(await res.json());
+    } else {
+      const d = await res.json();
+      setImportError(d.error ?? "Failed to import.");
+    }
+    setImporting(false);
+  }
+
   const TAB = (t: Tab) => `px-4 py-2 text-sm font-medium border-b-2 ${tab === t ? "border-black dark:border-white text-gray-900 dark:text-white" : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"}`;
   const btnPrimary = "bg-black text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50";
   const btnSecondary = "text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline";
@@ -554,7 +591,17 @@ export default function CampDetailPage() {
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <a href="/admin/camps" className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">← Camps</a>
-          {campName && <h1 className="text-xl font-bold mt-2">{campName}</h1>}
+          {campName && (
+            <div className="flex items-center gap-3 mt-2 flex-wrap">
+              <h1 className="text-xl font-bold">{campName}</h1>
+              <a href={`/api/admin/camps/${campId}/campers.csv`} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
+                Export campers (CSV)
+              </a>
+              <button onClick={openImport} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
+                Import from another camp…
+              </button>
+            </div>
+          )}
         </div>
         <div className="relative shrink-0 mt-1" ref={newMenuRef}>
           <button onClick={() => setNewMenuOpen(o => !o)}
@@ -714,6 +761,54 @@ export default function CampDetailPage() {
           onUpdate={() => { loadTracks(); loadActivities(); loadStandingEvents(); }}
           onOpenRoster={openRoster}
         />
+      )}
+
+      {/* ── IMPORT CAMPERS MODAL ── */}
+      {showImport && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowImport(false)} />
+          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-start justify-between mb-3">
+              <h2 className="text-lg font-bold">Import campers</h2>
+              <button onClick={() => setShowImport(false)} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl leading-none">✕</button>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Copy campers from another camp into <strong>{campName}</strong>. Their identity (chosen + legal name, pronouns, email) will be copied with new schedule links. Track and activity sign-ups will not carry over. Duplicates by email are skipped.
+            </p>
+
+            {!importResult ? (
+              <>
+                <label className="block text-sm font-medium mb-1">Source camp</label>
+                <select value={importSourceId} onChange={e => setImportSourceId(e.target.value)}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 mb-4">
+                  <option value="">Select a camp…</option>
+                  {otherCamps.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+
+                {importError && (
+                  <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded px-3 py-2 mb-3">{importError}</p>
+                )}
+
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => setShowImport(false)} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 px-3 py-1.5">Cancel</button>
+                  <button onClick={runImport} disabled={!importSourceId || importing} className={btnPrimary}>
+                    {importing ? "Importing…" : "Import"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-200/20 text-sm text-green-800 dark:text-green-300 mb-4">
+                  ✓ Imported {importResult.imported} camper{importResult.imported === 1 ? "" : "s"}.
+                  {importResult.skipped > 0 && <> Skipped {importResult.skipped} (already in this camp).</>}
+                </div>
+                <div className="flex justify-end">
+                  <button onClick={() => setShowImport(false)} className={btnPrimary}>Done</button>
+                </div>
+              </>
+            )}
+          </div>
+        </>
       )}
 
       {/* ── ROSTER PANEL ── */}

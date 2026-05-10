@@ -93,8 +93,15 @@ function AdminNav() {
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{me.email}</p>
                   </div>
                 )}
+                <Link
+                  href="/admin/profile"
+                  onClick={() => setShowUserMenu(false)}
+                  className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  Your profile
+                </Link>
                 <form action="/api/admin/logout" method="POST">
-                  <button type="submit" className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <button type="submit" className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border-t border-gray-100 dark:border-gray-700">
                     Sign out
                   </button>
                 </form>

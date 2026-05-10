@@ -17,7 +17,7 @@ export async function createSessionToken(payload: {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: JWT_ALG })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime("30d")
     .sign(getSecret());
 }
 

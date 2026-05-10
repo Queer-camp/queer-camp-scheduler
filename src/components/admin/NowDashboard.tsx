@@ -59,16 +59,38 @@ export function NowDashboard({ data }: { data: NowData }) {
   const router = useRouter();
   const [now, setNow] = useState<Date>(() => new Date());
 
-  // Tick clock every 30s
+  // Tick clock every 30s — only when tab is visible
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 30_000);
-    return () => clearInterval(id);
+    let id: ReturnType<typeof setInterval> | null = null;
+    function start() {
+      if (id) return;
+      setNow(new Date());
+      id = setInterval(() => setNow(new Date()), 30_000);
+    }
+    function stop() {
+      if (id) { clearInterval(id); id = null; }
+    }
+    function onVis() { (document.visibilityState === "visible") ? start() : stop(); }
+    onVis();
+    document.addEventListener("visibilitychange", onVis);
+    return () => { stop(); document.removeEventListener("visibilitychange", onVis); };
   }, []);
 
-  // Refresh server data every 2 minutes (rosters might change)
+  // Refresh server data every 5 min — only when tab is visible
   useEffect(() => {
-    const id = setInterval(() => router.refresh(), 120_000);
-    return () => clearInterval(id);
+    let id: ReturnType<typeof setInterval> | null = null;
+    function start() {
+      if (id) return;
+      router.refresh();
+      id = setInterval(() => router.refresh(), 300_000);
+    }
+    function stop() {
+      if (id) { clearInterval(id); id = null; }
+    }
+    function onVis() { (document.visibilityState === "visible") ? start() : stop(); }
+    onVis();
+    document.addEventListener("visibilitychange", onVis);
+    return () => { stop(); document.removeEventListener("visibilitychange", onVis); };
   }, [router]);
 
   const today = ALL_DAYS[now.getDay()];
@@ -196,7 +218,7 @@ export function NowDashboard({ data }: { data: NowData }) {
       </section>
 
       <p className="mt-10 text-xs text-gray-400 dark:text-gray-500">
-        Auto-refreshes every 2 minutes · Time updates every 30 seconds
+        Auto-refreshes every 5 minutes when tab is visible
       </p>
     </div>
   );

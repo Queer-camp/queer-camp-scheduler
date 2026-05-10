@@ -1,12 +1,14 @@
 # Queer Camp Scheduler - Project Status
 
-**Last Updated:** May 10, 2026
+**Last Updated:** May 10, 2026 (end of day)
 
 ## Project Overview
 
-A workshop scheduling tool for Queer Camp, a queer-affirming day camp at a church in Fayetteville, Arkansas. Designed for multi-year use across multiple camps with admin-driven flexibility.
+An activity scheduling tool for Queer Camp, a queer-affirming day camp at a church in Fayetteville, Arkansas. Designed for multi-year use across multiple camps with admin-driven flexibility.
 
-**Important context:** Camper registration and payment are handled separately by RegFox at queercamp.regfox.com/camper-registration-2026. This scheduler is a private, link-based tool. After signing up through RegFox, campers receive a link from the camp admin and self-register in the scheduler to select their workshops.
+**Important context:** Camper registration and payment are handled separately by RegFox at queercamp.regfox.com/camper-registration-2026. This scheduler is a private, link-based tool. After signing up through RegFox, campers receive a link from the camp admin and self-register in the scheduler to select their activities.
+
+**Terminology:** Throughout the UI, the user-facing label for the optional sign-up offerings is **Activity**. Internally and in some older docs they may also be called workshops; the canonical term is "activity."
 
 ## Tech Stack Decisions
 
@@ -50,8 +52,12 @@ The org has a Google Workspace account at hello@queer.camp. We'll use SMTP throu
 
 **Emails the system will send:**
 - Magic link for camper to edit registration (self-service request)
-- Schedule email (admin-triggered, one button, sends to all campers in a camp)
-- Admin "message all campers" broadcasts (Phase 2)
+- Schedule email (admin-triggered when creating a camper or via "resend link")
+- Admin invite emails (with role-aware copy — admin vs staff member)
+- Admin removed notification
+- **Broadcast messages** (admin-triggered, see `/admin/broadcast`)
+
+**Email deliverability:** SPF record added to `queer.camp` DNS (`v=spf1 include:_spf.google.com ~all`). Without it, outgoing mail from hello@queer.camp lands in spam. DKIM and DMARC are not yet set up — would further improve inboxing if rejection rate becomes an issue.
 
 ## What's Complete
 
@@ -83,47 +89,69 @@ The org has a Google Workspace account at hello@queer.camp. We'll use SMTP throu
 ## Schema Reference
 
 ### `camps`
-- id, name, start_date, end_date, registration_open, timestamps
+- id, name, start_date, end_date, registration_open, is_active, archived, timestamps
+- Trigger enforces only one camp can have `is_active = true` at a time
 
 ### `tracks` (optional, morning)
-- id, camp_id, name, description, capacity, start_time, end_time, emoji, timestamps
+- id, camp_id, name, description, capacity, start_time, end_time
+- emoji, location, organizer, timestamps
 
 ### `activity_series`
 - id, camp_id, name, description, created_at
 
-### `activities` (afternoon, per day-slot)
+### `activities` (per day-slot)
 - id, camp_id, name, description, capacity
-- day, start_time, end_time
-- emoji, series_id (links to activity_series), timestamps
+- day (comma-separated day names), start_time, end_time
+- emoji, location, organizer, series_id (links to activity_series), timestamps
+
+### `standing_events` (camp-wide blocks: meals, ceremonies, etc.)
+- id, camp_id, name, day (comma-separated), start_time, end_time
+- emoji, location, organizer, timestamps
+- No capacity, no per-camper sign-up — applies to everyone
 
 ### `campers`
 - id, camp_id
-- legal_first_name, legal_last_name, chosen_name, pronouns, email
-- guardian_first_name, guardian_last_name, guardian_email, guardian_phone, guardian_relationship
-- emergency_same_as_guardian (bool), emergency_first_name, emergency_last_name, emergency_phone, emergency_relationship
-- track_id (nullable), token (auto-generated, unique), timestamps
+- chosen_first_name, chosen_last_name (display identity, required)
+- legal_first_name, legal_last_name (DB-only for RegFox cross-reference, required)
+- pronouns, email
+- track_id (nullable), token (auto-generated, unique, used in magic links), timestamps
 
 ### `registrations`
 - id, camper_id, activity_id, created_at
 - Unique constraint on (camper_id, activity_id)
+- Insert trigger enforces capacity (over-registration returns DB error)
 
 ### `admin_users`
-- id, email, role ('admin' or 'staff'), timestamps
+- id, name (nullable, set via /admin/profile), email, role ('admin' or 'staff')
+- login_token, login_token_expires_at (one-time magic link tokens, also used for invites)
+- timestamps
 
 ### Security Policies (RLS)
-- Camps, tracks, activities, activity_series: publicly readable, only admins can modify
-- Campers: can view/edit their own record (when authenticated by email)
+- Camps, tracks, activities, activity_series, standing_events: publicly readable, only admins can modify
+- Campers: can view/edit their own record (token-authenticated)
 - Anyone can create a camper record (for self-registration)
 - Admins and staff can view all campers and registrations
-- Only admins can modify camper records and admin_users
-- Staff role is read-only
+- Only admins (not staff) can mutate via the admin API — enforced in app code via `requireAdminRole`
+- Staff role is read-only — UI is currently visible to staff but API rejects writes
 
 ## Where We Are Now
 
-**Phase 1 MVP is complete and deployed.** Live at https://scheduler.queer.camp. Phase 2 (Admin Portal) is largely complete — tracks, activities, series, grid view, roster management, standing events, and camper management are all built.
+**Phase 1 MVP is complete and deployed.** Live at https://scheduler.queer.camp.
+**Phase 2 (Admin Portal) is essentially complete** — see the checklist below.
+**Phase 3 has started**: clone-camp templates, "Now" dashboard, printable rosters, broadcast messaging, CSV export, and returning-camper import all shipped.
 
 ### Schema Note
 The campers table was simplified after Phase 0: guardian and emergency contact fields were removed (RegFox owns that data). `chosen_name` was replaced with `chosen_first_name` + `chosen_last_name` (both required). Migration is at `migrations/001_simplify_campers.sql`.
+
+### Migrations applied (in order)
+1. `001_simplify_campers.sql` — drop guardian/emergency fields, split chosen_name
+2. `002_admin_login_tokens.sql` — magic-link tokens on admin_users
+3. `003_active_camp.sql` — `is_active` flag with single-active trigger
+4. `004_archived_camps.sql` — `archived` boolean on camps
+5. `005_admin_name.sql` — `name` column on admin_users
+6. `006_add_location.sql` — `location` on tracks and activities
+7. `007_standing_events.sql` — new `standing_events` table
+8. `008_organizer_and_standing_location.sql` — `organizer` on all three; `location` on standing_events
 
 ## What's Left to Do
 
@@ -161,44 +189,42 @@ The campers table was simplified after Phase 0: guardian and emergency contact f
 - [x] Deploy to Vercel — live at https://queer-camp-scheduler.vercel.app
 - [x] End-to-end QA (registration, magic link, email delivery confirmed in prod)
 
-### Phase 2: Admin Portal
+### Phase 2: Admin Portal ✓
 
-- [ ] Admin authentication (magic link with admin_users check)
-- [ ] Admin dashboard layout
-- [ ] Camp management:
-  - Create new camps
-  - Edit camp details
-  - Toggle registration open/closed
-  - Archive past camps
-- [ ] Activity management:
-  - Create/edit/delete activities
-  - Set capacities, days, times, descriptions
-  - Link activities into series (multi-part workshops)
-- [ ] Track management:
-  - Create/edit/delete tracks per camp
-- [ ] Camper management:
-  - Searchable list of all campers
-  - View individual camper details and schedule
-  - Manual schedule edits
-  - Export camper lists
-- [ ] **Send schedules button** - One-click send to all campers in a camp via SMTP
-- [ ] **Message all campers** broadcast tool:
-  - Compose subject and body (plain text or basic HTML)
-  - Filter recipients (all campers, by track, by activity, individuals)
-  - Preview before send
-  - Confirmation step ("Send to N recipients?")
-  - Log of what was sent and to whom
-- [ ] RBAC: Admin (full access) vs Staff (read-only) enforcement
-- [ ] Manage admin_users (add/remove admins and staff)
+- [x] Admin authentication (magic link via admin_users + invite emails)
+- [x] Admin dashboard layout (top nav: Now, Camps, Campers, Broadcast, Admins)
+- [x] Camp management: create, edit, toggle registration, archive, **clone**, set active
+- [x] Activity management: create/edit/delete, capacities, days, times, descriptions, location, organizer, series linking
+- [x] Track management: create/edit/delete per camp, location, organizer
+- [x] Standing events: create/edit/delete camp-wide time blocks (meals, ceremonies)
+- [x] Calendar grid view with click-to-create, click-to-edit popovers, color-coded blocks
+- [x] Conflict warnings when creating/editing things that overlap a standing event
+- [x] Camper management: list, individual edit, manual schedule edits, move between tracks
+- [x] Send/resend schedule link (per camper)
+- [x] **Broadcast messaging** (`/admin/broadcast`): subject + body, filter by camp/track/activity/team, preview recipients, confirm + send
+- [x] RBAC: Admin (full access) vs Staff (read-only) enforced via `requireAdminRole`
+- [x] Manage admin_users (invite, remove, role-aware copy)
+- [x] Admin profile (`/admin/profile`) — admins edit their own name
+- [x] 30-day session cookies (admins stay logged in)
 
 ### Phase 3: Polish & Advanced Features
 
+- [x] Camp templates / clone existing camp (copies tracks, activities, series; not campers)
+- [x] **Returning campers**: import camper identity rows from a previous camp (new tokens, dedupes by email)
+- [x] **CSV export** of all campers in a camp (with track + registered activities)
+- [x] **Now dashboard** (`/admin/now`): real-time view of what's happening + up next, with rosters per item
+- [x] **Printable rosters** (`/print/track/[id]` and `/print/activity/[id]`) with checkbox column per day for paper attendance
+- [x] Schedule view styling overhaul (color-coded item types, location, organizer)
+- [x] Rainbow Q favicon
 - [ ] Late registration handling (clarify meaning with David first)
 - [ ] Joyful Brutalism visual design (matching queer.camp branding)
 - [ ] Activity waitlists
-- [ ] Camp templates ("duplicate from previous camp")
 - [ ] Sensitive data cleanup reminders for past camps
 - [ ] Analytics dashboard (popular activities, fill rates, etc.)
+- [ ] Camper notification when their schedule is affected by an admin change
+- [ ] Camper self-edit of chosen name / pronouns from schedule page
+- [ ] Digital attendance / check-in (tap a camper on Now to mark present)
+- [ ] DKIM + DMARC DNS records (further email deliverability)
 
 ### Phase 4: Future Considerations
 

@@ -107,6 +107,42 @@ export async function sendAdminRemoved({
   });
 }
 
+export async function sendBroadcast({
+  to,
+  displayName,
+  campName,
+  subject,
+  body,
+}: {
+  to: string;
+  displayName: string;
+  campName: string;
+  subject: string;
+  body: string;
+}) {
+  const paragraphs = body.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  const htmlParas = paragraphs.map(p => `<p>${p.replace(/\n/g, "<br>").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>`).join("\n");
+  const textBody = paragraphs.join("\n\n");
+
+  await transporter.sendMail({
+    from: `Queer Camp <${process.env.SMTP_USER}>`,
+    to,
+    subject,
+    text: [
+      `Hi ${displayName},`,
+      "",
+      textBody,
+      "",
+      `— ${campName}`,
+    ].join("\n"),
+    html: `
+      <p>Hi ${displayName},</p>
+      ${htmlParas}
+      <p style="color:#666;font-size:13px;">— ${campName}</p>
+    `.trim(),
+  });
+}
+
 export async function sendScheduleLink({
   to,
   displayName,

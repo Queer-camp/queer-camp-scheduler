@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import type { Track, Activity, ActivitySeries } from "@/types/database";
+import type { Track, Activity, ActivitySeries, StandingEvent } from "@/types/database";
 import { formatTime } from "@/lib/format";
 import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut";
 import { ShortcutBadge } from "@/components/admin/ShortcutBadge";
 import { CampGrid } from "@/components/admin/CampGrid";
 import type { RosterTarget as GridRosterTarget } from "@/components/admin/CampGrid";
 
-type Tab = "tracks" | "activities" | "series" | "grid";
+type Tab = "tracks" | "activities" | "series" | "grid" | "standing";
 
 type RosterTarget = { type: "track" | "activity"; id: string; name: string; capacity: number };
 type RosterCamper = { id: string; chosen_first_name: string; chosen_last_name: string; pronouns: string | null; registration_id?: string; current_track_name?: string | null };
@@ -32,10 +32,12 @@ function daysInRange(startDate: string, endDate: string): string[] {
 const EMPTY_TRACK = { name: "", description: "", capacity: "", start_time: "09:00", end_time: "12:00", emoji: "", location: "" };
 const EMPTY_ACTIVITY = { name: "", description: "", capacity: "", day: "", start_time: "09:00", end_time: "12:00", emoji: "", series_id: "", location: "" };
 const EMPTY_SERIES = { name: "", description: "" };
+const EMPTY_STANDING = { name: "", emoji: "", day: "", start_time: "12:00", end_time: "13:00" };
 
 type TrackForm = typeof EMPTY_TRACK;
 type ActivityForm = typeof EMPTY_ACTIVITY;
 type SeriesForm = typeof EMPTY_SERIES;
+type StandingForm = typeof EMPTY_STANDING;
 
 // ── Time picker (always 12h, works across all browsers/locales) ───────────────
 
@@ -219,6 +221,39 @@ function SeriesFormFields({ form, setForm }: { form: SeriesForm; setForm: (f: Se
   );
 }
 
+function StandingFormFields({ form, setForm, availableDays }: { form: StandingForm; setForm: (f: StandingForm) => void; availableDays: string[] }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        <div className="w-20">
+          <label className="block text-sm font-medium mb-1">Emoji <span className="text-gray-400 dark:text-gray-500 font-normal">(opt)</span></label>
+          <input value={form.emoji} onChange={e => setForm({ ...form, emoji: e.target.value })}
+            className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 text-center" placeholder="🍽️" />
+        </div>
+        <div className="flex-1">
+          <label className="block text-sm font-medium mb-1">Name</label>
+          <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
+            className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Lunch, Opening Ceremony…" />
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-1">Days</label>
+        <DayPicker value={form.day} onChange={day => setForm({ ...form, day })} availableDays={availableDays} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium mb-1">Start time</label>
+          <TimePicker value={form.start_time} onChange={v => setForm({ ...form, start_time: v })} required />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">End time</label>
+          <TimePicker value={form.end_time} onChange={v => setForm({ ...form, end_time: v })} required />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function trackToForm(t: Track): TrackForm {
   return { name: t.name, description: t.description ?? "", capacity: String(t.capacity), start_time: t.start_time, end_time: t.end_time, emoji: t.emoji ?? "", location: t.location ?? "" };
 }
@@ -227,6 +262,9 @@ function activityToForm(a: Activity): ActivityForm {
 }
 function seriesToForm(s: ActivitySeries): SeriesForm {
   return { name: s.name, description: s.description ?? "" };
+}
+function standingToForm(e: StandingEvent): StandingForm {
+  return { name: e.name, emoji: e.emoji ?? "", day: e.day, start_time: e.start_time, end_time: e.end_time };
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -244,11 +282,13 @@ export default function CampDetailPage() {
   useKeyboardShortcut("2", () => setTab("activities"));
   useKeyboardShortcut("3", () => setTab("series"));
   useKeyboardShortcut("4", () => setTab("grid"));
+  useKeyboardShortcut("5", () => setTab("standing"));
   const [availableDays, setAvailableDays] = useState<string[]>(ALL_DAYS);
 
   const [tracks, setTracks] = useState<TrackWithCount[]>([]);
   const [activities, setActivities] = useState<ActivityWithCount[]>([]);
   const [series, setSeries] = useState<ActivitySeries[]>([]);
+  const [standingEvents, setStandingEvents] = useState<StandingEvent[]>([]);
 
   const [rosterTarget, setRosterTarget] = useState<RosterTarget | null>(null);
   const [rosterData, setRosterData] = useState<RosterData | null>(null);
@@ -262,10 +302,12 @@ export default function CampDetailPage() {
   const [showTrackForm, setShowTrackForm] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
   const [showSeriesForm, setShowSeriesForm] = useState(false);
+  const [showStandingForm, setShowStandingForm] = useState(false);
 
   const [trackForm, setTrackForm] = useState(EMPTY_TRACK);
   const [activityForm, setActivityForm] = useState(EMPTY_ACTIVITY);
   const [seriesForm, setSeriesForm] = useState(EMPTY_SERIES);
+  const [standingForm, setStandingForm] = useState(EMPTY_STANDING);
 
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
   const [editTrackForm, setEditTrackForm] = useState(EMPTY_TRACK);
@@ -273,6 +315,8 @@ export default function CampDetailPage() {
   const [editActivityForm, setEditActivityForm] = useState(EMPTY_ACTIVITY);
   const [editingSeries, setEditingSeries] = useState<ActivitySeries | null>(null);
   const [editSeriesForm, setEditSeriesForm] = useState(EMPTY_SERIES);
+  const [editingStanding, setEditingStanding] = useState<StandingEvent | null>(null);
+  const [editStandingForm, setEditStandingForm] = useState(EMPTY_STANDING);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -298,6 +342,10 @@ export default function CampDetailPage() {
   async function loadSeries() {
     const res = await fetch(`/api/admin/series?camp_id=${campId}`);
     if (res.ok) setSeries(await res.json());
+  }
+  async function loadStandingEvents() {
+    const res = await fetch(`/api/admin/standing-events?camp_id=${campId}`);
+    if (res.ok) setStandingEvents(await res.json());
   }
 
   async function loadRoster(target: RosterTarget) {
@@ -328,7 +376,7 @@ export default function CampDetailPage() {
       const camp = camps.find(c => c.id === campId);
       if (camp) { setCampName(camp.name); setCampStartDate(camp.start_date); setAvailableDays(daysInRange(camp.start_date, camp.end_date)); }
     });
-    loadTracks(); loadActivities(); loadSeries();
+    loadTracks(); loadActivities(); loadSeries(); loadStandingEvents();
   }, [campId]);
 
   function openRoster(target: RosterTarget) {
@@ -501,6 +549,10 @@ export default function CampDetailPage() {
                 className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 border-t border-gray-100 dark:border-gray-800">
                 New Activity
               </button>
+              <button onClick={() => { setNewMenuOpen(false); setTab("standing"); setShowStandingForm(true); setEditingStanding(null); }}
+                className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 border-t border-gray-100 dark:border-gray-800">
+                New Standing Event
+              </button>
             </div>
           )}
         </div>
@@ -511,6 +563,7 @@ export default function CampDetailPage() {
         <button className={TAB("activities")} onClick={() => setTab("activities")}>Activities<ShortcutBadge>2</ShortcutBadge></button>
         <button className={TAB("series")} onClick={() => setTab("series")}>Series<ShortcutBadge>3</ShortcutBadge></button>
         <button className={TAB("grid")} onClick={() => setTab("grid")}>Grid<ShortcutBadge>4</ShortcutBadge></button>
+        <button className={TAB("standing")} onClick={() => setTab("standing")}>Standing<ShortcutBadge>5</ShortcutBadge></button>
       </div>
 
       {error && <p className="mb-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-3 rounded">{error}</p>}
@@ -626,10 +679,11 @@ export default function CampDetailPage() {
           tracks={tracks}
           activities={activities}
           series={series}
+          standingEvents={standingEvents}
           availableDays={availableDays}
           campStartDate={campStartDate}
           campId={campId}
-          onUpdate={() => { loadTracks(); loadActivities(); }}
+          onUpdate={() => { loadTracks(); loadActivities(); loadStandingEvents(); }}
           onOpenRoster={openRoster}
         />
       )}
@@ -818,6 +872,61 @@ export default function CampDetailPage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* ── STANDING EVENTS ── */}
+      {tab === "standing" && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold">Standing Events</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Camp-wide time blocks that appear on everyone's schedule — meals, ceremonies, breaks.</p>
+            </div>
+            <button onClick={() => { setShowStandingForm(!showStandingForm); setEditingStanding(null); }} className={btnPrimary}>
+              {showStandingForm ? "Cancel" : "New standing event"}
+            </button>
+          </div>
+
+          {showStandingForm && (
+            <form className={formCard} onSubmit={e => {
+              e.preventDefault();
+              if (!standingForm.day) { setError("Please select at least one day."); return; }
+              handleCreate("/api/admin/standing-events", standingForm, () => { setStandingForm(EMPTY_STANDING); setShowStandingForm(false); loadStandingEvents(); });
+            }}>
+              <StandingFormFields form={standingForm} setForm={setStandingForm} availableDays={availableDays} />
+              <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Creating…" : "Create standing event"}</button>
+            </form>
+          )}
+
+          {standingEvents.length === 0 ? <p className="text-sm text-gray-500 dark:text-gray-400">No standing events yet.</p> : (
+            <div className="space-y-2">
+              {standingEvents.map(ev => editingStanding?.id === ev.id ? (
+                <form key={ev.id} className={formCard} onSubmit={e => {
+                  e.preventDefault();
+                  if (!editStandingForm.day) { setError("Please select at least one day."); return; }
+                  handleSave(`/api/admin/standing-events/${ev.id}`, editStandingForm, () => { setEditingStanding(null); loadStandingEvents(); });
+                }}>
+                  <StandingFormFields form={editStandingForm} setForm={setEditStandingForm} availableDays={availableDays} />
+                  <div className="flex gap-2">
+                    <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Saving…" : "Save"}</button>
+                    <button type="button" onClick={() => setEditingStanding(null)} className={btnSecondary}>Cancel</button>
+                  </div>
+                </form>
+              ) : (
+                <div key={ev.id} className={`${card} flex items-start justify-between`}>
+                  <div className="space-y-1">
+                    <p className="font-medium">{ev.emoji ? `${ev.emoji} ` : ""}{ev.name}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{formatDays(ev.day)} · {formatTime(ev.start_time)} – {formatTime(ev.end_time)}</p>
+                  </div>
+                  <div className="flex gap-3 ml-4 shrink-0">
+                    <button onClick={() => { setEditingStanding(ev); setEditStandingForm(standingToForm(ev)); setShowStandingForm(false); }} className={btnSecondary}>Edit</button>
+                    <button onClick={() => handleDelete(`/api/admin/standing-events/${ev.id}`, `Delete "${ev.name}"?`, loadStandingEvents)} className={btnDanger}>Delete</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {/* ── SERIES ── */}

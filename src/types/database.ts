@@ -68,6 +68,18 @@ export interface Registration {
   created_at: string;
 }
 
+export interface StandingEvent {
+  id: string;
+  camp_id: string;
+  name: string;
+  day: string;
+  start_time: string;
+  end_time: string;
+  emoji: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ── View types with computed fields ──────────────────────────────────────────
 
 export interface ActivityWithSpots extends Activity {

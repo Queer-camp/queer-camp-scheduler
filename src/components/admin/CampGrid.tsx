@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { Track, Activity, ActivitySeries } from "@/types/database";
+import type { Track, Activity, ActivitySeries, StandingEvent } from "@/types/database";
 import { formatTime } from "@/lib/format";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -13,12 +13,14 @@ export type RosterTarget = { type: "track" | "activity"; id: string; name: strin
 type PopoverState =
   | { kind: "create"; x: number; y: number; prefillStart: string; prefillEnd: string; prefillDay: string | null }
   | { kind: "track"; x: number; y: number; track: TrackWithCount }
-  | { kind: "activity"; x: number; y: number; activity: ActivityWithCount };
+  | { kind: "activity"; x: number; y: number; activity: ActivityWithCount }
+  | { kind: "standing"; x: number; y: number; event: StandingEvent };
 
 interface CampGridProps {
   tracks: TrackWithCount[];
   activities: ActivityWithCount[];
   series: ActivitySeries[];
+  standingEvents: StandingEvent[];
   availableDays: string[];
   campStartDate: string;
   campId: string;
@@ -545,6 +547,86 @@ function ActivityPopover({
   );
 }
 
+// ── Standing Event Popover ────────────────────────────────────────────────────
+
+function StandingEventPopover({
+  x, y, event, availableDays, onClose, onUpdate,
+}: {
+  x: number; y: number; event: StandingEvent;
+  availableDays: string[];
+  onClose: () => void; onUpdate: () => void;
+}) {
+  const [form, setForm] = useState({
+    name: event.name, emoji: event.emoji ?? "",
+    day: event.day, start_time: event.start_time, end_time: event.end_time,
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.day) { setError("Select at least one day."); return; }
+    setSaving(true); setError(null);
+    const res = await fetch(`/api/admin/standing-events/${event.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: form.name, emoji: form.emoji || null, day: form.day, start_time: form.start_time, end_time: form.end_time }),
+    });
+    if (res.ok) { onUpdate(); onClose(); }
+    else { const d = await res.json(); setError(d.error ?? "Failed to save."); }
+    setSaving(false);
+  }
+
+  async function del() {
+    if (!confirm(`Delete "${event.name}"?`)) return;
+    await fetch(`/api/admin/standing-events/${event.id}`, { method: "DELETE" });
+    onUpdate(); onClose();
+  }
+
+  return (
+    <Popover x={x} y={y} onClose={onClose}>
+      <form onSubmit={save}>
+        <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">Standing Event</span>
+            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none">✕</button>
+          </div>
+          <div className="flex gap-2">
+            <input value={form.emoji} onChange={e => set("emoji", e.target.value)} placeholder="🍽️"
+              className="w-12 text-center border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-amber-400" />
+            <input required value={form.name} onChange={e => set("name", e.target.value)}
+              className="flex-1 border border-gray-300 dark:border-gray-600 rounded px-2.5 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-amber-400" />
+          </div>
+        </div>
+
+        <div className="px-4 py-3 space-y-3">
+          <div>
+            <label className={labelCls}>Days</label>
+            <MiniDayPicker value={form.day} onChange={v => set("day", v)} availableDays={availableDays} />
+          </div>
+          <div>
+            <label className={labelCls}>Start time</label>
+            <TimePicker value={form.start_time} onChange={v => set("start_time", v)} />
+          </div>
+          <div>
+            <label className={labelCls}>End time</label>
+            <TimePicker value={form.end_time} onChange={v => set("end_time", v)} />
+          </div>
+          {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+        </div>
+
+        <div className="px-4 pb-4 flex items-center justify-between">
+          <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline">Delete</button>
+          <button type="submit" disabled={saving}
+            className="px-4 py-1.5 text-sm font-medium bg-amber-500 hover:bg-amber-600 text-white rounded-lg disabled:opacity-50 transition-colors">
+            {saving ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </form>
+    </Popover>
+  );
+}
+
 // ── Tracks header band ────────────────────────────────────────────────────────
 
 function TracksBand({ tracks, onClickTrack }: {
@@ -586,7 +668,7 @@ function TracksBand({ tracks, onClickTrack }: {
 
 // ── Main Grid ─────────────────────────────────────────────────────────────────
 
-export function CampGrid({ tracks, activities, series, availableDays, campStartDate, campId, onUpdate, onOpenRoster }: CampGridProps) {
+export function CampGrid({ tracks, activities, series, standingEvents, availableDays, campStartDate, campId, onUpdate, onOpenRoster }: CampGridProps) {
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -694,6 +776,27 @@ export function CampGrid({ tracks, activities, series, availableDays, campStartD
                       className={`border-t ${mins % 60 === 0 ? "border-gray-200 dark:border-gray-700" : "border-gray-100 dark:border-gray-800"}`} />
                   ))}
 
+                  {/* Standing event blocks */}
+                  {standingEvents.filter(ev => parseDays(ev.day).includes(day)).map(ev => {
+                    const top = timeToY(timeToMins(ev.start_time));
+                    const height = Math.max(24, timeToY(timeToMins(ev.end_time)) - top);
+                    return (
+                      <div key={ev.id}
+                        style={{ position: "absolute", top, height, left: 2, right: 2, zIndex: 2 }}
+                        className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-100/80 dark:bg-amber-900/50 px-1.5 py-1 overflow-hidden cursor-pointer hover:brightness-95 transition-[filter]"
+                        onClick={e => { e.stopPropagation(); setPopover({ kind: "standing", x: e.clientX, y: e.clientY, event: ev }); }}>
+                        <p className="text-xs font-semibold text-amber-900 dark:text-amber-100 truncate leading-tight">
+                          {ev.emoji ? `${ev.emoji} ` : ""}{ev.name}
+                        </p>
+                        {height > 36 && (
+                          <p className="text-xs text-amber-700 dark:text-amber-300 leading-tight opacity-70">
+                            {formatTime(ev.start_time)} – {formatTime(ev.end_time)}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+
                   {/* Activity blocks */}
                   {dayActs.map(activity => {
                     const { col, cols } = colMap[activity.id] ?? { col: 0, cols: 1 };
@@ -749,6 +852,13 @@ export function CampGrid({ tracks, activities, series, availableDays, campStartD
           x={popover.x} y={popover.y} activity={popover.activity}
           availableDays={availableDays} series={series}
           onClose={() => setPopover(null)} onUpdate={onUpdate} onOpenRoster={onOpenRoster}
+        />
+      )}
+      {popover?.kind === "standing" && (
+        <StandingEventPopover
+          x={popover.x} y={popover.y} event={popover.event}
+          availableDays={availableDays}
+          onClose={() => setPopover(null)} onUpdate={onUpdate}
         />
       )}
     </div>

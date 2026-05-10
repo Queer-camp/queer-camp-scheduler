@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import type { Track, Activity, ActivitySeries, StandingEvent } from "@/types/database";
 import { formatTime } from "@/lib/format";
+import { findStandingEventConflicts } from "@/lib/conflicts";
+import { ConflictWarning } from "@/components/admin/ConflictWarning";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -211,10 +213,10 @@ const labelCls = "block text-xs font-medium text-gray-500 dark:text-gray-400 mb-
 
 function CreatePopover({
   x, y, prefillStart, prefillEnd, prefillDay,
-  availableDays, series, campId, onClose, onCreated,
+  availableDays, series, standingEvents, campId, onClose, onCreated,
 }: {
   x: number; y: number; prefillStart: string; prefillEnd: string; prefillDay: string | null;
-  availableDays: string[]; series: ActivitySeries[]; campId: string;
+  availableDays: string[]; series: ActivitySeries[]; standingEvents: StandingEvent[]; campId: string;
   onClose: () => void; onCreated: () => void;
 }) {
   const [form, setForm] = useState({
@@ -315,6 +317,12 @@ function CreatePopover({
             <input value={form.description} onChange={e => set("description", e.target.value)} className={inputCls} />
           </div>
 
+          <ConflictWarning conflicts={findStandingEventConflicts(
+            form.start_time, form.end_time,
+            form.itemType === "track" ? availableDays : (form.day ? form.day.split(",").map(d => d.trim()).filter(Boolean) : []),
+            standingEvents,
+          )} />
+
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
         </div>
 
@@ -333,9 +341,10 @@ function CreatePopover({
 // ── Track Detail Popover ──────────────────────────────────────────────────────
 
 function TrackPopover({
-  x, y, track, onClose, onUpdate, onOpenRoster,
+  x, y, track, availableDays, standingEvents, onClose, onUpdate, onOpenRoster,
 }: {
   x: number; y: number; track: TrackWithCount;
+  availableDays: string[]; standingEvents: StandingEvent[];
   onClose: () => void; onUpdate: () => void; onOpenRoster: (t: RosterTarget) => void;
 }) {
   const [form, setForm] = useState({
@@ -410,6 +419,7 @@ function TrackPopover({
             <label className={labelCls}>Description <span className="font-normal opacity-60">(optional)</span></label>
             <input value={form.description} onChange={e => set("description", e.target.value)} className={inputCls} />
           </div>
+          <ConflictWarning conflicts={findStandingEventConflicts(form.start_time, form.end_time, availableDays, standingEvents)} />
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
         </div>
 
@@ -432,10 +442,10 @@ function TrackPopover({
 // ── Activity Detail Popover ───────────────────────────────────────────────────
 
 function ActivityPopover({
-  x, y, activity, availableDays, series, onClose, onUpdate, onOpenRoster,
+  x, y, activity, availableDays, series, standingEvents, onClose, onUpdate, onOpenRoster,
 }: {
   x: number; y: number; activity: ActivityWithCount;
-  availableDays: string[]; series: ActivitySeries[];
+  availableDays: string[]; series: ActivitySeries[]; standingEvents: StandingEvent[];
   onClose: () => void; onUpdate: () => void; onOpenRoster: (t: RosterTarget) => void;
 }) {
   const [form, setForm] = useState({
@@ -528,6 +538,11 @@ function ActivityPopover({
             <label className={labelCls}>Description <span className="font-normal opacity-60">(optional)</span></label>
             <input value={form.description} onChange={e => set("description", e.target.value)} className={inputCls} />
           </div>
+          <ConflictWarning conflicts={findStandingEventConflicts(
+            form.start_time, form.end_time,
+            form.day ? form.day.split(",").map(d => d.trim()).filter(Boolean) : [],
+            standingEvents,
+          )} />
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
         </div>
 
@@ -836,20 +851,21 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
         <CreatePopover
           x={popover.x} y={popover.y}
           prefillStart={popover.prefillStart} prefillEnd={popover.prefillEnd} prefillDay={popover.prefillDay}
-          availableDays={availableDays} series={series} campId={campId}
+          availableDays={availableDays} series={series} standingEvents={standingEvents} campId={campId}
           onClose={() => setPopover(null)} onCreated={onUpdate}
         />
       )}
       {popover?.kind === "track" && (
         <TrackPopover
           x={popover.x} y={popover.y} track={popover.track}
+          availableDays={availableDays} standingEvents={standingEvents}
           onClose={() => setPopover(null)} onUpdate={onUpdate} onOpenRoster={onOpenRoster}
         />
       )}
       {popover?.kind === "activity" && (
         <ActivityPopover
           x={popover.x} y={popover.y} activity={popover.activity}
-          availableDays={availableDays} series={series}
+          availableDays={availableDays} series={series} standingEvents={standingEvents}
           onClose={() => setPopover(null)} onUpdate={onUpdate} onOpenRoster={onOpenRoster}
         />
       )}

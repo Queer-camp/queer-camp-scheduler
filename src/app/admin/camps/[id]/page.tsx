@@ -8,6 +8,8 @@ import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut";
 import { ShortcutBadge } from "@/components/admin/ShortcutBadge";
 import { CampGrid } from "@/components/admin/CampGrid";
 import type { RosterTarget as GridRosterTarget } from "@/components/admin/CampGrid";
+import { ConflictWarning } from "@/components/admin/ConflictWarning";
+import { findStandingEventConflicts } from "@/lib/conflicts";
 
 type Tab = "tracks" | "activities" | "series" | "grid" | "standing";
 
@@ -581,6 +583,7 @@ export default function CampDetailPage() {
           {showTrackForm && (
             <form className={formCard} onSubmit={e => { e.preventDefault(); handleCreate("/api/admin/tracks", trackForm, () => { setTrackForm(EMPTY_TRACK); setShowTrackForm(false); loadTracks(); }); }}>
               <TrackFormFields form={trackForm} setForm={setTrackForm} />
+              <ConflictWarning conflicts={findStandingEventConflicts(trackForm.start_time, trackForm.end_time, availableDays, standingEvents)} />
               <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Creating…" : "Create track"}</button>
             </form>
           )}
@@ -590,6 +593,7 @@ export default function CampDetailPage() {
               {tracks.map(t => editingTrack?.id === t.id ? (
                 <form key={t.id} className={formCard} onSubmit={e => { e.preventDefault(); handleSave(`/api/admin/tracks/${t.id}`, editTrackForm, () => { setEditingTrack(null); loadTracks(); }); }}>
                   <TrackFormFields form={editTrackForm} setForm={setEditTrackForm} />
+                  <ConflictWarning conflicts={findStandingEventConflicts(editTrackForm.start_time, editTrackForm.end_time, availableDays, standingEvents)} />
                   <div className="flex gap-2">
                     <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Saving…" : "Save"}</button>
                     <button type="button" onClick={() => setEditingTrack(null)} className={btnSecondary}>Cancel</button>
@@ -633,6 +637,7 @@ export default function CampDetailPage() {
               handleCreate("/api/admin/activities", activityForm, () => { setActivityForm(EMPTY_ACTIVITY); setShowActivityForm(false); loadActivities(); });
             }}>
               <ActivityFormFields form={activityForm} setForm={setActivityForm} series={series} availableDays={availableDays} />
+              <ConflictWarning conflicts={findStandingEventConflicts(activityForm.start_time, activityForm.end_time, parseDays(activityForm.day), standingEvents)} />
               <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Creating…" : "Create activity"}</button>
             </form>
           )}
@@ -646,6 +651,7 @@ export default function CampDetailPage() {
                   handleSave(`/api/admin/activities/${a.id}`, editActivityForm, () => { setEditingActivity(null); loadActivities(); });
                 }}>
                   <ActivityFormFields form={editActivityForm} setForm={setEditActivityForm} series={series} availableDays={availableDays} />
+                  <ConflictWarning conflicts={findStandingEventConflicts(editActivityForm.start_time, editActivityForm.end_time, parseDays(editActivityForm.day), standingEvents)} />
                   <div className="flex gap-2">
                     <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Saving…" : "Save"}</button>
                     <button type="button" onClick={() => setEditingActivity(null)} className={btnSecondary}>Cancel</button>

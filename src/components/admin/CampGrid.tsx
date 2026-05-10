@@ -627,45 +627,6 @@ function StandingEventPopover({
   );
 }
 
-// ── Tracks header band ────────────────────────────────────────────────────────
-
-function TracksBand({ tracks, onClickTrack }: {
-  tracks: TrackWithCount[];
-  onClickTrack: (e: React.MouseEvent, track: TrackWithCount) => void;
-}) {
-  if (tracks.length === 0) return null;
-  return (
-    <div className="border-b border-gray-200 dark:border-gray-700 bg-blue-50/50 dark:bg-blue-950/20 px-3 py-2 space-y-1.5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400 px-1 mb-1">Tracks</p>
-      {tracks.map(track => {
-        const pct = Math.min(track.enrolled / track.capacity, 1);
-        const barColor = pct >= 1 ? "bg-red-500" : pct >= 0.8 ? "bg-yellow-500" : "bg-green-500";
-        return (
-          <button key={track.id} type="button"
-            onClick={e => onClickTrack(e, track)}
-            className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg bg-white dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/50 transition-colors">
-            {track.emoji && <span className="text-base shrink-0">{track.emoji}</span>}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-baseline gap-2 flex-wrap">
-                <span className="font-medium text-sm text-blue-900 dark:text-blue-100">{track.name}</span>
-                <span className="text-xs text-blue-500 dark:text-blue-400">{formatTime(track.start_time)} – {formatTime(track.end_time)}</span>
-                {track.location && <span className="text-xs text-blue-500 dark:text-blue-400">📍 {track.location}</span>}
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="w-24 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div className={`h-full ${barColor} rounded-full`} style={{ width: `${pct * 100}%` }} />
-                </div>
-                <span className="text-xs text-blue-500 dark:text-blue-400">{track.enrolled}/{track.capacity}</span>
-              </div>
-            </div>
-            <span className="text-xs text-blue-400 dark:text-blue-500 shrink-0">Edit →</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 // ── Main Grid ─────────────────────────────────────────────────────────────────
 
 export function CampGrid({ tracks, activities, series, standingEvents, availableDays, campStartDate, campId, onUpdate, onOpenRoster }: CampGridProps) {
@@ -694,6 +655,11 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
     })));
   }
 
+  // Track overlap columns — tracks run every day so compute once
+  const trackCols = computeColumns(tracks.map(t => ({
+    id: t.id, start: timeToMins(t.start_time), end: timeToMins(t.end_time),
+  })));
+
   function handleColumnClick(e: React.MouseEvent<HTMLDivElement>, day: string) {
     const rect = e.currentTarget.getBoundingClientRect();
     const relY = e.clientY - rect.top;
@@ -712,9 +678,6 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
       <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Click any empty area to add an activity or track · Click a block to edit</p>
 
       <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-
-        {/* Tracks header band */}
-        <TracksBand tracks={tracks} onClickTrack={(e, track) => setPopover({ kind: "track", x: e.clientX, y: e.clientY, track })} />
 
         {/* Day column headers */}
         <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 sticky top-0 z-10">
@@ -776,13 +739,49 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                       className={`border-t ${mins % 60 === 0 ? "border-gray-200 dark:border-gray-700" : "border-gray-100 dark:border-gray-800"}`} />
                   ))}
 
+                  {/* Track blocks — appear in every day column at their time */}
+                  {tracks.map(track => {
+                    const { col, cols } = trackCols[track.id] ?? { col: 0, cols: 1 };
+                    const top = timeToY(timeToMins(track.start_time));
+                    const height = Math.max(24, timeToY(timeToMins(track.end_time)) - top);
+                    const widthPct = 100 / cols;
+                    const pct = Math.min(track.enrolled / track.capacity, 1);
+                    const barColor = pct >= 1 ? "bg-red-500" : pct >= 0.8 ? "bg-yellow-500" : "bg-green-500";
+                    return (
+                      <div key={`track-${day}-${track.id}`}
+                        style={{
+                          position: "absolute", top, height,
+                          left: `calc(${col * widthPct}% + 2px)`,
+                          width: `calc(${widthPct}% - 4px)`,
+                          zIndex: 2,
+                        }}
+                        className="rounded-md border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900 px-1.5 py-1 overflow-hidden cursor-pointer hover:brightness-95 transition-[filter]"
+                        onClick={e => { e.stopPropagation(); setPopover({ kind: "track", x: e.clientX, y: e.clientY, track }); }}>
+                        <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 truncate leading-tight">
+                          {track.emoji ? `${track.emoji} ` : ""}{track.name}
+                        </p>
+                        {track.location && height > 36 && (
+                          <p className="text-xs text-blue-700 dark:text-blue-300 truncate leading-tight opacity-75">📍 {track.location}</p>
+                        )}
+                        {height > 48 && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <div className="flex-1 h-1 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
+                              <div className={`h-full ${barColor} rounded-full`} style={{ width: `${pct * 100}%` }} />
+                            </div>
+                            <span className="text-xs text-blue-700 dark:text-blue-300 opacity-70">{track.enrolled}/{track.capacity}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
                   {/* Standing event blocks */}
                   {standingEvents.filter(ev => parseDays(ev.day).includes(day)).map(ev => {
                     const top = timeToY(timeToMins(ev.start_time));
                     const height = Math.max(24, timeToY(timeToMins(ev.end_time)) - top);
                     return (
                       <div key={ev.id}
-                        style={{ position: "absolute", top, height, left: 2, right: 2, zIndex: 2 }}
+                        style={{ position: "absolute", top, height, left: 2, right: 2, zIndex: 4 }}
                         className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-100/80 dark:bg-amber-900/50 px-1.5 py-1 overflow-hidden cursor-pointer hover:brightness-95 transition-[filter]"
                         onClick={e => { e.stopPropagation(); setPopover({ kind: "standing", x: e.clientX, y: e.clientY, event: ev }); }}>
                         <p className="text-xs font-semibold text-amber-900 dark:text-amber-100 truncate leading-tight">

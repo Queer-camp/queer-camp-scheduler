@@ -150,6 +150,9 @@ function ViewMode({
               <p className="text-sm text-gray-600 print:text-gray-600 mt-0.5 font-medium">
                 {formatTime(currentTrack.start_time)} – {formatTime(currentTrack.end_time)}
               </p>
+              {currentTrack.location && (
+                <p className="text-sm text-gray-600 print:text-gray-700 mt-0.5">📍 {currentTrack.location}</p>
+              )}
             </div>
           </div>
         )}
@@ -223,6 +226,9 @@ function ViewMode({
                               {a.emoji ? `${a.emoji} ` : ""}
                               {a.name}
                             </p>
+                            {a.location && (
+                              <p className="text-sm text-gray-600 print:text-gray-700 mt-0.5">📍 {a.location}</p>
+                            )}
                             {actSeries && (
                               <p className="text-xs text-gray-500 mt-0.5">{actSeries.name}</p>
                             )}

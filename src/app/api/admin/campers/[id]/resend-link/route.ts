@@ -22,7 +22,7 @@ export async function POST(
 
   if (error || !camper) return NextResponse.json({ error: "Camper not found" }, { status: 404 });
 
-  const scheduleUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/schedule?token=${camper.token}`;
+  const scheduleUrl = `${process.env.NEXT_PUBLIC_APP_URL}/schedule?token=${camper.token}`;
   await sendScheduleLink({
     to: camper.email,
     displayName: `${camper.chosen_first_name} ${camper.chosen_last_name}`,

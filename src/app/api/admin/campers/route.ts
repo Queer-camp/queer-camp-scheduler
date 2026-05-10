@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
 
   // Send schedule link if email provided
   if (camper.email) {
-    const scheduleUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/schedule?token=${token}`;
+    const scheduleUrl = `${process.env.NEXT_PUBLIC_APP_URL}/schedule?token=${token}`;
     try {
       await sendScheduleLink({
         to: camper.email,

@@ -6,6 +6,7 @@ import type {
   ActivityWithSpots,
   TrackWithSpots,
   ActivitySeries,
+  StandingEvent,
 } from "@/types/database";
 import WorkshopSlots, { buildTimeSlots } from "@/components/WorkshopSlots";
 import { formatTime, formatDay } from "@/lib/format";
@@ -28,6 +29,7 @@ interface Props {
   activities: ActivityWithSpots[];
   tracks: TrackWithSpots[];
   series: ActivitySeries[];
+  standingEvents: StandingEvent[];
 }
 
 const RAINBOW = "#d93025, #f5810e, #f5c23e, #5dbb46, #4b96f3, #7c3aed, #e879a8";
@@ -47,6 +49,12 @@ export default function ScheduleView(props: Props) {
 
 // ── View mode ─────────────────────────────────────────────────────────────────
 
+const ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+type DayItem =
+  | { kind: "activity"; activity: ActivityWithSpots }
+  | { kind: "standing"; event: StandingEvent };
+
 function ViewMode({
   camper,
   campName,
@@ -54,6 +62,7 @@ function ViewMode({
   activities,
   tracks,
   series,
+  standingEvents,
   onEdit,
 }: Props & { onEdit: () => void }) {
   const displayName = `${camper.chosen_first_name} ${camper.chosen_last_name}`;
@@ -77,13 +86,32 @@ function ViewMode({
   );
 
   const byDay = useMemo(() => {
-    const map = new Map<string, ActivityWithSpots[]>();
+    const map = new Map<string, DayItem[]>();
+
     for (const a of registeredActivities) {
       if (!map.has(a.day)) map.set(a.day, []);
-      map.get(a.day)!.push(a);
+      map.get(a.day)!.push({ kind: "activity", activity: a });
     }
-    return Array.from(map.entries());
-  }, [registeredActivities]);
+
+    for (const ev of standingEvents) {
+      const days = ev.day.split(",").map((d) => d.trim()).filter(Boolean);
+      for (const day of days) {
+        if (!map.has(day)) map.set(day, []);
+        map.get(day)!.push({ kind: "standing", event: ev });
+      }
+    }
+
+    // Sort each day's items by start_time and return in week order
+    for (const items of map.values()) {
+      items.sort((a, b) => {
+        const aTime = a.kind === "activity" ? a.activity.start_time : a.event.start_time;
+        const bTime = b.kind === "activity" ? b.activity.start_time : b.event.start_time;
+        return aTime.localeCompare(bTime);
+      });
+    }
+
+    return ALL_DAYS.filter((d) => map.has(d)).map((d) => [d, map.get(d)!] as const);
+  }, [registeredActivities, standingEvents]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 print:bg-white print:min-h-0">
@@ -125,7 +153,7 @@ function ViewMode({
         )}
 
         {/* Schedule by day */}
-        {byDay.length === 0 ? (
+        {byDay.length === 0 && registeredActivities.length === 0 ? (
           <div className="mt-8 text-center py-10 print:hidden">
             <p className="text-gray-400 text-sm mb-2">No workshops selected yet.</p>
             <button onClick={onEdit} className="text-purple-600 underline text-sm font-medium">
@@ -134,7 +162,7 @@ function ViewMode({
           </div>
         ) : (
           <div className="mt-8 space-y-6">
-            {byDay.map(([day, dayActivities]) => (
+            {byDay.map(([day, items]) => (
               <div key={day}>
                 <h2
                   className="font-bold text-base mb-3 print:text-black"
@@ -143,7 +171,29 @@ function ViewMode({
                   {formatDay(day)}
                 </h2>
                 <div className="space-y-2">
-                  {dayActivities.map((a) => {
+                  {items.map((item) => {
+                    if (item.kind === "standing") {
+                      const ev = item.event;
+                      return (
+                        <div
+                          key={`standing-${ev.id}`}
+                          className="flex items-start gap-3 p-3 rounded-xl bg-amber-50 print:bg-white border border-amber-200 print:border-gray-300"
+                        >
+                          <div className="text-xs text-amber-600 print:text-gray-600 w-20 pt-0.5 shrink-0 font-medium">
+                            {formatTime(ev.start_time)}
+                            <br />
+                            {formatTime(ev.end_time)}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-amber-900 print:text-gray-900">
+                              {ev.emoji ? `${ev.emoji} ` : ""}
+                              {ev.name}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+                    const a = item.activity;
                     const actSeries = a.series_id
                       ? series.find((s) => s.id === a.series_id)
                       : null;

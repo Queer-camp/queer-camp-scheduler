@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase";
 import ScheduleView from "@/components/ScheduleView";
 import { CookieSetter } from "./CookieSetter";
-import type { ActivityWithSpots, TrackWithSpots } from "@/types/database";
+import type { ActivityWithSpots, TrackWithSpots, StandingEvent } from "@/types/database";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Your Schedule — Queer Camp" };
@@ -41,6 +41,7 @@ export default async function SchedulePage({
     { data: tracks },
     { data: series },
     { data: camp },
+    { data: standingEvents },
   ] = await Promise.all([
     supabase
       .from("registrations")
@@ -59,6 +60,7 @@ export default async function SchedulePage({
       .order("start_time"),
     supabase.from("activity_series").select("*").eq("camp_id", campId),
     supabase.from("camps").select("name").eq("id", campId).single(),
+    supabase.from("standing_events").select("*").eq("camp_id", campId).order("start_time"),
   ]);
 
   const activityIds = (activities ?? []).map((a) => a.id);
@@ -115,6 +117,7 @@ export default async function SchedulePage({
         activities={activitiesWithSpots}
         tracks={tracksWithSpots}
         series={series ?? []}
+        standingEvents={(standingEvents ?? []) as StandingEvent[]}
       />
     </>
   );

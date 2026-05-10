@@ -6,7 +6,7 @@ import type {
   TrackWithSpots,
   ActivitySeries,
 } from "@/types/database";
-import WorkshopSlots, { buildTimeSlots } from "@/components/WorkshopSlots";
+import ActivitySlots, { buildTimeSlots } from "@/components/ActivitySlots";
 import { formatTime } from "@/lib/format";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -181,7 +181,7 @@ export default function RegistrationForm({
           <p className="text-gray-600 mb-8 text-lg">
             We&apos;re so excited to have you at {campName}. Here&apos;s your
             personal schedule link — bookmark it to view and update your
-            workshops anytime.
+            activities anytime.
           </p>
 
           <div className="bg-white rounded-xl border-2 border-purple-100 p-4 font-mono text-sm break-all mb-8 text-left text-gray-700 shadow-sm">
@@ -395,15 +395,15 @@ export default function RegistrationForm({
           </Card>
         )}
 
-        {/* ── Workshop Selection ── */}
+        {/* ── Activity Selection ── */}
         <Card color="#4b96f3">
-          <SectionHeader color="#4b96f3">Workshop Selection</SectionHeader>
+          <SectionHeader color="#4b96f3">Activity Selection</SectionHeader>
           {timeSlots.length === 0 ? (
             <p className="text-sm text-gray-400">
-              No workshops have been added for this camp yet.
+              No activities have been added for this camp yet.
             </p>
           ) : (
-            <WorkshopSlots
+            <ActivitySlots
               timeSlots={timeSlots}
               series={series}
               activities={activities}

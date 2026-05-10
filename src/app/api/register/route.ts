@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "One or more workshops filled up just now. Please go back and re-select.",
+            "One or more activities filled up just now. Please go back and re-select.",
         },
         { status: 409 }
       );

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Queer Camp",
-  description: "Workshop scheduling for Queer Camp.",
+  description: "Activity scheduling for Queer Camp.",
   robots: { index: false, follow: false },
 };
 

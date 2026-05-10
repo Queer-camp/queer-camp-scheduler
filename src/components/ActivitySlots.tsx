@@ -53,7 +53,7 @@ interface Props {
   onSeriesConfirm?: (slotKey: string, activity: ActivityWithSpots, companionSlotKeys: string[]) => void;
 }
 
-export default function WorkshopSlots({
+export default function ActivitySlots({
   timeSlots,
   series,
   activities,
@@ -120,7 +120,7 @@ export default function WorkshopSlots({
                         {lockedSeriesName && (
                           <p className="text-xs text-indigo-700 mt-0.5">
                             Included with &ldquo;{lockedSeriesName}&rdquo; —
-                            deselect that workshop above to change
+                            deselect that activity above to change
                           </p>
                         )}
                       </div>

@@ -8,7 +8,7 @@ import type {
   ActivitySeries,
   StandingEvent,
 } from "@/types/database";
-import WorkshopSlots, { buildTimeSlots } from "@/components/WorkshopSlots";
+import ActivitySlots, { buildTimeSlots } from "@/components/ActivitySlots";
 import { formatTime, formatDay } from "@/lib/format";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -163,7 +163,7 @@ function ViewMode({
         {/* Schedule by day */}
         {byDay.length === 0 && registeredActivities.length === 0 ? (
           <div className="mt-8 text-center py-10 print:hidden">
-            <p className="text-gray-400 text-sm mb-2">No workshops selected yet.</p>
+            <p className="text-gray-400 text-sm mb-2">No activities selected yet.</p>
             <button onClick={onEdit} className="text-purple-600 underline text-sm font-medium">
               Add some →
             </button>
@@ -229,7 +229,7 @@ function ViewMode({
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-bold uppercase tracking-wide text-pink-600 print:text-gray-500 mb-0.5">
-                              Workshop
+                              Activity
                             </p>
                             <p className="text-base font-semibold text-gray-900">
                               {a.emoji ? `${a.emoji} ` : ""}
@@ -444,13 +444,13 @@ function EditMode({
           </div>
         )}
 
-        {/* Workshop selection */}
+        {/* Activity selection */}
         <div className="bg-white rounded-2xl shadow-sm border-t-4 p-6 space-y-4" style={{ borderTopColor: "#4b96f3" }}>
-          <h2 className="text-lg font-bold" style={{ color: "#4b96f3" }}>Workshop Selection</h2>
+          <h2 className="text-lg font-bold" style={{ color: "#4b96f3" }}>Activity Selection</h2>
           {timeSlots.length === 0 ? (
-            <p className="text-sm text-gray-400">No workshops have been added yet.</p>
+            <p className="text-sm text-gray-400">No activities have been added yet.</p>
           ) : (
-            <WorkshopSlots
+            <ActivitySlots
               timeSlots={timeSlots}
               series={series}
               activities={activities}

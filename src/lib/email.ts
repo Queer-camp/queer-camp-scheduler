@@ -163,7 +163,7 @@ export async function sendScheduleLink({
       "",
       `<${scheduleUrl}>`,
       "",
-      "Bookmark it — you'll use it to view and update your workshop selections.",
+      "Bookmark it — you'll use it to view and update your activity selections.",
       "",
       "See you at camp!",
       "— The Queer Camp Team",
@@ -172,7 +172,7 @@ export async function sendScheduleLink({
       <p>Hi ${displayName},</p>
       <p>Here's your personal Queer Camp schedule link:</p>
       <p><a href="${scheduleUrl}" style="display:inline-block;padding:11px 28px;background:linear-gradient(to right,#e879a8,#7c3aed);color:#fff;text-decoration:none;border-radius:999px;font-weight:bold;font-size:15px;">View your schedule</a></p>
-      <p>Bookmark it — you'll use it to view and update your workshop selections.</p>
+      <p>Bookmark it — you'll use it to view and update your activity selections.</p>
       <p>See you at camp!<br>— The Queer Camp Team</p>
     `.trim(),
   });

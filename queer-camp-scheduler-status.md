@@ -1,6 +1,6 @@
 # Queer Camp Scheduler - Project Status
 
-**Last Updated:** May 8, 2026
+**Last Updated:** May 10, 2026
 
 ## Project Overview
 
@@ -120,7 +120,7 @@ The org has a Google Workspace account at hello@queer.camp. We'll use SMTP throu
 
 ## Where We Are Now
 
-**Phase 1 MVP is complete and deployed.** Live at https://queer-camp-scheduler.vercel.app. Phase 2 (Admin Portal) is next.
+**Phase 1 MVP is complete and deployed.** Live at https://scheduler.queer.camp. Phase 2 (Admin Portal) is largely complete — tracks, activities, series, grid view, roster management, standing events, and camper management are all built.
 
 ### Schema Note
 The campers table was simplified after Phase 0: guardian and emergency contact fields were removed (RegFox owns that data). `chosen_name` was replaced with `chosen_first_name` + `chosen_last_name` (both required). Migration is at `migrations/001_simplify_campers.sql`.
@@ -234,10 +234,29 @@ The campers table was simplified after Phase 0: guardian and emergency contact f
 | GitHub Org | Queer-camp (under hello@queer.camp) | ✓ Created |
 | Supabase | hello@queer.camp via GitHub | ✓ Project provisioned, schema deployed |
 | Google Workspace SMTP | hello@queer.camp | ✓ Credentials in .env.local, wired to Nodemailer |
-| Vercel | Queer-camp GitHub org | ✓ Deployed at queer-camp-scheduler.vercel.app |
+| Vercel | Queer-camp GitHub org | ✓ Deployed at scheduler.queer.camp |
+| DNS (queer.camp) | Managed separately | ✓ CNAME record added for scheduler subdomain |
 
 ## Key Project URLs
 
-- Existing production app: https://queer-camp-schedules.web.app
+- **Production app:** https://scheduler.queer.camp
+- **Vercel alias:** https://queer-camp-scheduler.vercel.app (still works, but scheduler.queer.camp is canonical)
 - RegFox registration: https://queercamp.regfox.com/camper-registration-2026
-- Future production URL: TBD (likely scheduler.queer.camp or similar)
+
+## DNS Configuration
+
+Domain: `queer.camp` (DNS managed separately from Vercel)
+
+### Custom subdomain for this app
+
+| Type | Name | Value | Notes |
+|------|------|-------|-------|
+| CNAME | `scheduler` | `cname.vercel-dns.com` | Points scheduler.queer.camp → Vercel |
+
+Vercel also recommends a newer CNAME target (`1f837a1b8db509e3.vercel-dns-017.com`) but the current one works and both are valid per Vercel. Do not add both — CNAME records for the same name must be unique.
+
+The domain is verified in Vercel under the `queer-camp-scheduler` project (Settings → Domains).
+
+### Env var tied to domain
+
+`NEXT_PUBLIC_APP_URL=https://scheduler.queer.camp` — set in Vercel environment variables. This is what builds magic link URLs in all outgoing emails. If the domain ever changes, update this var and redeploy.

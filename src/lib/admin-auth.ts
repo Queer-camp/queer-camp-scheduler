@@ -10,3 +10,11 @@ export async function requireAdmin(req: NextRequest) {
     return null;
   }
 }
+
+// For write operations — rejects staff (read-only) sessions
+export async function requireAdminRole(req: NextRequest) {
+  const session = await requireAdmin(req);
+  if (!session) return null;
+  if (session.role !== "admin") return null;
+  return session;
+}

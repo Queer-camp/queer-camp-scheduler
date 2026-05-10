@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase";
 import { verifySessionToken, COOKIE_NAME } from "@/lib/admin-session";
 
-async function requireAdmin(req: NextRequest) {
+async function requireAdminRole(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
   if (!token) return null;
   try {
@@ -16,7 +16,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!await requireAdmin(req)) {
+  if (!await requireAdminRole(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -44,7 +44,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!await requireAdmin(req)) {
+  if (!await requireAdminRole(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

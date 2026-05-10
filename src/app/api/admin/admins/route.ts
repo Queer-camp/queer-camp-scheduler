@@ -29,10 +29,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { name, email } = await req.json();
+  const { name, email, role } = await req.json();
   if (!name?.trim() || !email?.trim()) {
     return NextResponse.json({ error: "Name and email are required." }, { status: 400 });
   }
+  const resolvedRole = role === "staff" ? "staff" : "admin";
 
   const supabase = createAdminClient();
 
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
     .insert({
       name: name.trim(),
       email: email.trim().toLowerCase(),
-      role: "admin",
+      role: resolvedRole,
       login_token: inviteToken,
       login_token_expires_at: expires,
     })

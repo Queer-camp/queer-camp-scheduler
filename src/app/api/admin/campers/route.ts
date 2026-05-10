@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin, requireAdminRole } from "@/lib/admin-auth";
 import { sendScheduleLink } from "@/lib/email";
 import crypto from "crypto";
 
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!await requireAdmin(req)) {
+  if (!await requireAdminRole(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

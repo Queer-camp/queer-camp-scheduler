@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase";
-import { verifySessionToken, COOKIE_NAME } from "@/lib/admin-session";
-
-async function requireAdmin(req: NextRequest) {
-  const token = req.cookies.get(COOKIE_NAME)?.value;
-  if (!token) return null;
-  try {
-    return await verifySessionToken(token);
-  } catch {
-    return null;
-  }
-}
+import { requireAdmin, requireAdminRole } from "@/lib/admin-auth";
 
 export async function GET(req: NextRequest) {
   if (!await requireAdmin(req)) {
@@ -28,7 +18,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!await requireAdmin(req)) {
+  if (!await requireAdminRole(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

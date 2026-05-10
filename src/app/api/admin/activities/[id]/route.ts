@@ -11,6 +11,7 @@ export async function PATCH(
   const body = await req.json();
   const allowed = ["name", "description", "capacity", "day", "start_time", "end_time", "emoji", "location", "organizer", "series_id"];
   const updates = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
+  if ("series_id" in updates) updates.series_id = updates.series_id || null;
   const supabase = createAdminClient();
   const { data, error } = await supabase.from("activities").update(updates).eq("id", id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

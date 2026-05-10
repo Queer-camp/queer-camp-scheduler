@@ -31,10 +31,10 @@ function daysInRange(startDate: string, endDate: string): string[] {
   return ALL_DAYS.filter(d => available.has(d));
 }
 
-const EMPTY_TRACK = { name: "", description: "", capacity: "", start_time: "09:00", end_time: "12:00", emoji: "", location: "" };
-const EMPTY_ACTIVITY = { name: "", description: "", capacity: "", day: "", start_time: "09:00", end_time: "12:00", emoji: "", series_id: "", location: "" };
+const EMPTY_TRACK = { name: "", description: "", capacity: "", start_time: "09:00", end_time: "12:00", emoji: "", location: "", organizer: "" };
+const EMPTY_ACTIVITY = { name: "", description: "", capacity: "", day: "", start_time: "09:00", end_time: "12:00", emoji: "", series_id: "", location: "", organizer: "" };
 const EMPTY_SERIES = { name: "", description: "" };
-const EMPTY_STANDING = { name: "", emoji: "", day: "", start_time: "12:00", end_time: "13:00" };
+const EMPTY_STANDING = { name: "", emoji: "", day: "", start_time: "12:00", end_time: "13:00", location: "", organizer: "" };
 
 type TrackForm = typeof EMPTY_TRACK;
 type ActivityForm = typeof EMPTY_ACTIVITY;
@@ -128,6 +128,11 @@ function TrackFormFields({ form, setForm }: { form: TrackForm; setForm: (f: Trac
           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Room 4, Pavilion…" />
       </div>
       <div className="col-span-2">
+        <label className="block text-sm font-medium mb-1">Organizer <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
+        <input value={form.organizer} onChange={e => setForm({ ...form, organizer: e.target.value })}
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Sam Lopez" />
+      </div>
+      <div className="col-span-2">
         <label className="block text-sm font-medium mb-1">Description <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
         <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" />
@@ -166,6 +171,11 @@ function ActivityFormFields({ form, setForm, series, availableDays }: { form: Ac
         <label className="block text-sm font-medium mb-1">Location <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
         <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Room 4, Pavilion…" />
+      </div>
+      <div className="col-span-2">
+        <label className="block text-sm font-medium mb-1">Organizer <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
+        <input value={form.organizer} onChange={e => setForm({ ...form, organizer: e.target.value })}
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Sam Lopez" />
       </div>
       <div className="col-span-2">
         <label className="block text-sm font-medium mb-1">Description <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
@@ -239,6 +249,16 @@ function StandingFormFields({ form, setForm, availableDays }: { form: StandingFo
         </div>
       </div>
       <div>
+        <label className="block text-sm font-medium mb-1">Location <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
+        <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Dining Hall…" />
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-1">Organizer <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
+        <input value={form.organizer} onChange={e => setForm({ ...form, organizer: e.target.value })}
+          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Kitchen team" />
+      </div>
+      <div>
         <label className="block text-sm font-medium mb-1">Days</label>
         <DayPicker value={form.day} onChange={day => setForm({ ...form, day })} availableDays={availableDays} />
       </div>
@@ -257,16 +277,16 @@ function StandingFormFields({ form, setForm, availableDays }: { form: StandingFo
 }
 
 function trackToForm(t: Track): TrackForm {
-  return { name: t.name, description: t.description ?? "", capacity: String(t.capacity), start_time: t.start_time, end_time: t.end_time, emoji: t.emoji ?? "", location: t.location ?? "" };
+  return { name: t.name, description: t.description ?? "", capacity: String(t.capacity), start_time: t.start_time, end_time: t.end_time, emoji: t.emoji ?? "", location: t.location ?? "", organizer: t.organizer ?? "" };
 }
 function activityToForm(a: Activity): ActivityForm {
-  return { name: a.name, description: a.description ?? "", capacity: String(a.capacity), day: a.day, start_time: a.start_time, end_time: a.end_time, emoji: a.emoji ?? "", series_id: a.series_id ?? "", location: a.location ?? "" };
+  return { name: a.name, description: a.description ?? "", capacity: String(a.capacity), day: a.day, start_time: a.start_time, end_time: a.end_time, emoji: a.emoji ?? "", series_id: a.series_id ?? "", location: a.location ?? "", organizer: a.organizer ?? "" };
 }
 function seriesToForm(s: ActivitySeries): SeriesForm {
   return { name: s.name, description: s.description ?? "" };
 }
 function standingToForm(e: StandingEvent): StandingForm {
-  return { name: e.name, emoji: e.emoji ?? "", day: e.day, start_time: e.start_time, end_time: e.end_time };
+  return { name: e.name, emoji: e.emoji ?? "", day: e.day, start_time: e.start_time, end_time: e.end_time, location: e.location ?? "", organizer: e.organizer ?? "" };
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -605,6 +625,7 @@ export default function CampDetailPage() {
                     <p className="font-medium">{t.emoji ? `${t.emoji} ` : ""}{t.name}</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">{formatTime(t.start_time)} – {formatTime(t.end_time)}</p>
                     {t.location && <p className="text-sm text-gray-500 dark:text-gray-400">📍 {t.location}</p>}
+                    {t.organizer && <p className="text-sm text-gray-500 dark:text-gray-400">👤 {t.organizer}</p>}
                     {t.description && <p className="text-sm text-gray-500 dark:text-gray-400">{t.description}</p>}
                     <EnrollCount enrolled={t.enrolled} capacity={t.capacity} />
                   </div>
@@ -663,6 +684,7 @@ export default function CampDetailPage() {
                     <p className="font-medium">{a.emoji ? `${a.emoji} ` : ""}{a.name}</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">{formatDays(a.day)} · {formatTime(a.start_time)} – {formatTime(a.end_time)}</p>
                     {a.location && <p className="text-sm text-gray-500 dark:text-gray-400">📍 {a.location}</p>}
+                    {a.organizer && <p className="text-sm text-gray-500 dark:text-gray-400">👤 {a.organizer}</p>}
                     {a.series_id && <p className="text-sm text-gray-500 dark:text-gray-400">Series: {series.find(s => s.id === a.series_id)?.name ?? "—"}</p>}
                     {a.description && <p className="text-sm text-gray-500 dark:text-gray-400">{a.description}</p>}
                     <EnrollCount enrolled={a.enrolled} capacity={a.capacity} />
@@ -933,6 +955,8 @@ export default function CampDetailPage() {
                   <div className="space-y-1">
                     <p className="font-medium">{ev.emoji ? `${ev.emoji} ` : ""}{ev.name}</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">{formatDays(ev.day)} · {formatTime(ev.start_time)} – {formatTime(ev.end_time)}</p>
+                    {ev.location && <p className="text-sm text-gray-500 dark:text-gray-400">📍 {ev.location}</p>}
+                    {ev.organizer && <p className="text-sm text-gray-500 dark:text-gray-400">👤 {ev.organizer}</p>}
                   </div>
                   <div className="flex gap-3 ml-4 shrink-0">
                     <button onClick={() => { setEditingStanding(ev); setEditStandingForm(standingToForm(ev)); setShowStandingForm(false); }} className={btnSecondary}>Edit</button>

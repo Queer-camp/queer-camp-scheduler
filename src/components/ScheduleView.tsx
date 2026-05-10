@@ -153,6 +153,9 @@ function ViewMode({
               {currentTrack.location && (
                 <p className="text-sm text-gray-600 print:text-gray-700 mt-0.5">📍 {currentTrack.location}</p>
               )}
+              {currentTrack.organizer && (
+                <p className="text-sm text-gray-600 print:text-gray-700 mt-0.5">👤 {currentTrack.organizer}</p>
+              )}
             </div>
           </div>
         )}
@@ -198,6 +201,12 @@ function ViewMode({
                                 {ev.emoji ? `${ev.emoji} ` : ""}
                                 {ev.name}
                               </p>
+                              {ev.location && (
+                                <p className="text-sm text-gray-600 print:text-gray-700 mt-0.5">📍 {ev.location}</p>
+                              )}
+                              {ev.organizer && (
+                                <p className="text-sm text-gray-600 print:text-gray-700 mt-0.5">👤 {ev.organizer}</p>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -228,6 +237,9 @@ function ViewMode({
                             </p>
                             {a.location && (
                               <p className="text-sm text-gray-600 print:text-gray-700 mt-0.5">📍 {a.location}</p>
+                            )}
+                            {a.organizer && (
+                              <p className="text-sm text-gray-600 print:text-gray-700 mt-0.5">👤 {a.organizer}</p>
                             )}
                             {actSeries && (
                               <p className="text-xs text-gray-500 mt-0.5">{actSeries.name}</p>

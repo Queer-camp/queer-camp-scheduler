@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   if (!await requireAdminRole(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json();
-  const { camp_id, name, description, capacity, start_time, end_time, emoji, location } = body;
+  const { camp_id, name, description, capacity, start_time, end_time, emoji, location, organizer } = body;
   if (!camp_id || !name?.trim() || !capacity || !start_time || !end_time) {
     return NextResponse.json({ error: "camp_id, name, capacity, start_time, and end_time are required." }, { status: 400 });
   }
@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
     camp_id, name: name.trim(), description: description?.trim() || null,
     capacity: Number(capacity), start_time, end_time, emoji: emoji?.trim() || null,
     location: location?.trim() || null,
+    organizer: organizer?.trim() || null,
   }).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data, { status: 201 });

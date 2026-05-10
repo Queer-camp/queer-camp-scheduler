@@ -221,7 +221,7 @@ function CreatePopover({
 }) {
   const [form, setForm] = useState({
     itemType: "activity" as "track" | "activity",
-    name: "", emoji: "", location: "", description: "",
+    name: "", emoji: "", location: "", organizer: "", description: "",
     day: prefillDay ?? "", start_time: prefillStart, end_time: prefillEnd,
     capacity: "15", series_id: "",
   });
@@ -239,8 +239,8 @@ function CreatePopover({
     setSaving(true); setError(null);
     const url = form.itemType === "track" ? "/api/admin/tracks" : "/api/admin/activities";
     const body = form.itemType === "track"
-      ? { camp_id: campId, name: form.name, emoji: form.emoji, location: form.location, description: form.description, capacity: form.capacity, start_time: form.start_time, end_time: form.end_time }
-      : { camp_id: campId, name: form.name, emoji: form.emoji, location: form.location, description: form.description, capacity: form.capacity, start_time: form.start_time, end_time: form.end_time, day: form.day, series_id: form.series_id };
+      ? { camp_id: campId, name: form.name, emoji: form.emoji, location: form.location, organizer: form.organizer, description: form.description, capacity: form.capacity, start_time: form.start_time, end_time: form.end_time }
+      : { camp_id: campId, name: form.name, emoji: form.emoji, location: form.location, organizer: form.organizer, description: form.description, capacity: form.capacity, start_time: form.start_time, end_time: form.end_time, day: form.day, series_id: form.series_id };
     const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (res.ok) { onCreated(); onClose(); }
     else { const d = await res.json(); setError(d.error ?? "Failed to create."); }
@@ -277,6 +277,11 @@ function CreatePopover({
           <div>
             <label className={labelCls}>Location</label>
             <input value={form.location} onChange={e => set("location", e.target.value)} placeholder="Room 4, Gym, Pavilion…" className={inputCls} />
+          </div>
+
+          <div>
+            <label className={labelCls}>Organizer</label>
+            <input value={form.organizer} onChange={e => set("organizer", e.target.value)} placeholder="Sam Lopez" className={inputCls} />
           </div>
 
           {form.itemType === "activity" && (
@@ -349,6 +354,7 @@ function TrackPopover({
 }) {
   const [form, setForm] = useState({
     name: track.name, emoji: track.emoji ?? "", location: track.location ?? "",
+    organizer: track.organizer ?? "",
     description: track.description ?? "", start_time: track.start_time,
     end_time: track.end_time, capacity: String(track.capacity),
   });
@@ -363,7 +369,7 @@ function TrackPopover({
     setSaving(true); setError(null);
     const res = await fetch(`/api/admin/tracks/${track.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: form.name, emoji: form.emoji, location: form.location, description: form.description, start_time: form.start_time, end_time: form.end_time, capacity: Number(form.capacity) }),
+      body: JSON.stringify({ name: form.name, emoji: form.emoji, location: form.location, organizer: form.organizer, description: form.description, start_time: form.start_time, end_time: form.end_time, capacity: Number(form.capacity) }),
     });
     if (res.ok) { onUpdate(); onClose(); }
     else { const d = await res.json(); setError(d.error ?? "Failed to save."); }
@@ -402,6 +408,10 @@ function TrackPopover({
           <div>
             <label className={labelCls}>Location</label>
             <input value={form.location} onChange={e => set("location", e.target.value)} placeholder="Room, building…" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Organizer</label>
+            <input value={form.organizer} onChange={e => set("organizer", e.target.value)} placeholder="Sam Lopez" className={inputCls} />
           </div>
           <div>
             <label className={labelCls}>Start time</label>
@@ -450,6 +460,7 @@ function ActivityPopover({
 }) {
   const [form, setForm] = useState({
     name: activity.name, emoji: activity.emoji ?? "", location: activity.location ?? "",
+    organizer: activity.organizer ?? "",
     description: activity.description ?? "", day: activity.day,
     start_time: activity.start_time, end_time: activity.end_time,
     capacity: String(activity.capacity), series_id: activity.series_id ?? "",
@@ -466,7 +477,7 @@ function ActivityPopover({
     setSaving(true); setError(null);
     const res = await fetch(`/api/admin/activities/${activity.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: form.name, emoji: form.emoji, location: form.location, description: form.description, day: form.day, start_time: form.start_time, end_time: form.end_time, capacity: Number(form.capacity), series_id: form.series_id || null }),
+      body: JSON.stringify({ name: form.name, emoji: form.emoji, location: form.location, organizer: form.organizer, description: form.description, day: form.day, start_time: form.start_time, end_time: form.end_time, capacity: Number(form.capacity), series_id: form.series_id || null }),
     });
     if (res.ok) { onUpdate(); onClose(); }
     else { const d = await res.json(); setError(d.error ?? "Failed to save."); }
@@ -505,6 +516,10 @@ function ActivityPopover({
           <div>
             <label className={labelCls}>Location</label>
             <input value={form.location} onChange={e => set("location", e.target.value)} placeholder="Room, building…" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Organizer</label>
+            <input value={form.organizer} onChange={e => set("organizer", e.target.value)} placeholder="Sam Lopez" className={inputCls} />
           </div>
           <div>
             <label className={labelCls}>Days</label>
@@ -573,6 +588,7 @@ function StandingEventPopover({
 }) {
   const [form, setForm] = useState({
     name: event.name, emoji: event.emoji ?? "",
+    location: event.location ?? "", organizer: event.organizer ?? "",
     day: event.day, start_time: event.start_time, end_time: event.end_time,
   });
   const [saving, setSaving] = useState(false);
@@ -585,7 +601,7 @@ function StandingEventPopover({
     setSaving(true); setError(null);
     const res = await fetch(`/api/admin/standing-events/${event.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: form.name, emoji: form.emoji || null, day: form.day, start_time: form.start_time, end_time: form.end_time }),
+      body: JSON.stringify({ name: form.name, emoji: form.emoji || null, location: form.location || null, organizer: form.organizer || null, day: form.day, start_time: form.start_time, end_time: form.end_time }),
     });
     if (res.ok) { onUpdate(); onClose(); }
     else { const d = await res.json(); setError(d.error ?? "Failed to save."); }
@@ -615,6 +631,14 @@ function StandingEventPopover({
         </div>
 
         <div className="px-4 py-3 space-y-3">
+          <div>
+            <label className={labelCls}>Location</label>
+            <input value={form.location} onChange={e => set("location", e.target.value)} placeholder="Dining Hall…" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Organizer</label>
+            <input value={form.organizer} onChange={e => set("organizer", e.target.value)} placeholder="Kitchen team" className={inputCls} />
+          </div>
           <div>
             <label className={labelCls}>Days</label>
             <MiniDayPicker value={form.day} onChange={v => set("day", v)} availableDays={availableDays} />

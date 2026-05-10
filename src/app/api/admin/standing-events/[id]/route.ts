@@ -9,7 +9,7 @@ export async function PATCH(
   if (!await requireAdminRole(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
   const body = await req.json();
-  const allowed = ["name", "day", "start_time", "end_time", "emoji"];
+  const allowed = ["name", "day", "start_time", "end_time", "emoji", "location", "organizer"];
   const updates = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
   const supabase = createAdminClient();
   const { data, error } = await supabase.from("standing_events").update(updates).eq("id", id).select().single();

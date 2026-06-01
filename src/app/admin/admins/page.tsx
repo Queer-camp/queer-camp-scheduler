@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAdminRole } from "@/components/admin/AdminRoleContext";
+import { StaffDrawer } from "@/components/admin/StaffDrawer";
 
 type Admin = {
   id: string;
@@ -33,6 +34,7 @@ export default function AdminsPage() {
   const [addEmailSaving, setAddEmailSaving] = useState(false);
   const [sendingInviteId, setSendingInviteId] = useState<string | null>(null);
   const sendInviteOnCreate = useRef(false);
+  const [drawerStaffId, setDrawerStaffId] = useState<string | null>(null);
 
   async function load() {
     const [adminsRes, meRes] = await Promise.all([
@@ -208,7 +210,10 @@ export default function AdminsPage() {
                   <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
                     {group.map(a => (
                       <div key={a.id} className="px-5 py-4">
-                        <div className="flex items-center justify-between gap-4">
+                        <div
+                          className="flex items-center justify-between gap-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-5 px-5 -my-1 py-1 rounded transition-colors"
+                          onClick={e => { if ((e.target as HTMLElement).closest("button,input,a")) return; setDrawerStaffId(a.id); }}
+                        >
                           <div className="min-w-0">
                             <p className="font-medium text-gray-900 dark:text-white">{a.name ?? <span className="text-gray-400 dark:text-gray-500 font-normal">No name</span>}</p>
                             {a.email ? (
@@ -307,6 +312,14 @@ export default function AdminsPage() {
             );
           })}
         </>
+      )}
+      {drawerStaffId && (
+        <StaffDrawer
+          staffId={drawerStaffId}
+          onClose={() => setDrawerStaffId(null)}
+          onUpdated={() => { load(); }}
+          meId={me?.id ?? null}
+        />
       )}
     </div>
   );

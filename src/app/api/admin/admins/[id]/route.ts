@@ -11,26 +11,33 @@ export async function PATCH(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const { email } = await req.json();
-  const trimmedEmail = email?.trim().toLowerCase() || null;
+  const { email, name, role } = await req.json();
 
   const supabase = createAdminClient();
+  const updates: Record<string, unknown> = {};
 
-  if (trimmedEmail) {
-    const { data: existing } = await supabase
-      .from("admin_users")
-      .select("id")
-      .eq("email", trimmedEmail)
-      .neq("id", id)
-      .single();
-    if (existing) {
-      return NextResponse.json({ error: "That email is already used by another admin." }, { status: 409 });
+  if (name !== undefined) updates.name = name?.trim() || null;
+  if (role !== undefined) updates.role = role === "leader" ? "leader" : "admin";
+
+  if (email !== undefined) {
+    const trimmedEmail = email?.trim().toLowerCase() || null;
+    if (trimmedEmail) {
+      const { data: existing } = await supabase
+        .from("admin_users")
+        .select("id")
+        .eq("email", trimmedEmail)
+        .neq("id", id)
+        .single();
+      if (existing) {
+        return NextResponse.json({ error: "That email is already used by another admin." }, { status: 409 });
+      }
     }
+    updates.email = trimmedEmail;
   }
 
   const { data, error } = await supabase
     .from("admin_users")
-    .update({ email: trimmedEmail })
+    .update(updates)
     .eq("id", id)
     .select()
     .single();

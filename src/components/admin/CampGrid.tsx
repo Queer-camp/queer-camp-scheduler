@@ -27,6 +27,7 @@ interface CampGridProps {
   campStartDate: string;
   campId: string;
   isAdmin: boolean;
+  organizers: string[];
   onUpdate: () => void;
   onOpenRoster: (target: RosterTarget) => void;
 }
@@ -210,14 +211,24 @@ function Popover({ x, y, onClose, children }: { x: number; y: number; onClose: (
 const inputCls = "w-full border border-gray-300 dark:border-gray-600 rounded px-2.5 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-400";
 const labelCls = "block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5";
 
+function OrganizerSelect({ value, onChange, organizers }: { value: string; onChange: (v: string) => void; organizers: string[] }) {
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)}
+      className="w-full border border-gray-300 dark:border-gray-600 rounded px-2.5 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-400">
+      <option value="">— None —</option>
+      {organizers.map(name => <option key={name} value={name}>{name}</option>)}
+    </select>
+  );
+}
+
 // ── Create Popover ────────────────────────────────────────────────────────────
 
 function CreatePopover({
   x, y, prefillStart, prefillEnd, prefillDay,
-  availableDays, series, standingEvents, campId, onClose, onCreated,
+  availableDays, series, standingEvents, campId, organizers, onClose, onCreated,
 }: {
   x: number; y: number; prefillStart: string; prefillEnd: string; prefillDay: string | null;
-  availableDays: string[]; series: ActivitySeries[]; standingEvents: StandingEvent[]; campId: string;
+  availableDays: string[]; series: ActivitySeries[]; standingEvents: StandingEvent[]; campId: string; organizers: string[];
   onClose: () => void; onCreated: () => void;
 }) {
   const [form, setForm] = useState({
@@ -282,7 +293,7 @@ function CreatePopover({
 
           <div>
             <label className={labelCls}>Organizer</label>
-            <input value={form.organizer} onChange={e => set("organizer", e.target.value)} placeholder="Sam Lopez" className={inputCls} />
+            <OrganizerSelect value={form.organizer} onChange={v => set("organizer", v)} organizers={organizers} />
           </div>
 
           {form.itemType === "activity" && (
@@ -347,10 +358,10 @@ function CreatePopover({
 // ── Track Detail Popover ──────────────────────────────────────────────────────
 
 function TrackPopover({
-  x, y, track, availableDays, standingEvents, onClose, onUpdate, onOpenRoster,
+  x, y, track, availableDays, standingEvents, organizers, onClose, onUpdate, onOpenRoster,
 }: {
   x: number; y: number; track: TrackWithCount;
-  availableDays: string[]; standingEvents: StandingEvent[];
+  availableDays: string[]; standingEvents: StandingEvent[]; organizers: string[];
   onClose: () => void; onUpdate: () => void; onOpenRoster: (t: RosterTarget) => void;
 }) {
   const [form, setForm] = useState({
@@ -412,7 +423,7 @@ function TrackPopover({
           </div>
           <div>
             <label className={labelCls}>Organizer</label>
-            <input value={form.organizer} onChange={e => set("organizer", e.target.value)} placeholder="Sam Lopez" className={inputCls} />
+            <OrganizerSelect value={form.organizer} onChange={v => set("organizer", v)} organizers={organizers} />
           </div>
           <div>
             <label className={labelCls}>Start time</label>
@@ -453,10 +464,10 @@ function TrackPopover({
 // ── Activity Detail Popover ───────────────────────────────────────────────────
 
 function ActivityPopover({
-  x, y, activity, availableDays, series, standingEvents, onClose, onUpdate, onOpenRoster,
+  x, y, activity, availableDays, series, standingEvents, organizers, onClose, onUpdate, onOpenRoster,
 }: {
   x: number; y: number; activity: ActivityWithCount;
-  availableDays: string[]; series: ActivitySeries[]; standingEvents: StandingEvent[];
+  availableDays: string[]; series: ActivitySeries[]; standingEvents: StandingEvent[]; organizers: string[];
   onClose: () => void; onUpdate: () => void; onOpenRoster: (t: RosterTarget) => void;
 }) {
   const [form, setForm] = useState({
@@ -520,7 +531,7 @@ function ActivityPopover({
           </div>
           <div>
             <label className={labelCls}>Organizer</label>
-            <input value={form.organizer} onChange={e => set("organizer", e.target.value)} placeholder="Sam Lopez" className={inputCls} />
+            <OrganizerSelect value={form.organizer} onChange={v => set("organizer", v)} organizers={organizers} />
           </div>
           <div>
             <label className={labelCls}>Days</label>
@@ -581,10 +592,10 @@ function ActivityPopover({
 // ── Standing Event Popover ────────────────────────────────────────────────────
 
 function StandingEventPopover({
-  x, y, event, availableDays, onClose, onUpdate,
+  x, y, event, availableDays, organizers, onClose, onUpdate,
 }: {
   x: number; y: number; event: StandingEvent;
-  availableDays: string[];
+  availableDays: string[]; organizers: string[];
   onClose: () => void; onUpdate: () => void;
 }) {
   const [form, setForm] = useState({
@@ -638,7 +649,7 @@ function StandingEventPopover({
           </div>
           <div>
             <label className={labelCls}>Organizer</label>
-            <input value={form.organizer} onChange={e => set("organizer", e.target.value)} placeholder="Kitchen team" className={inputCls} />
+            <OrganizerSelect value={form.organizer} onChange={v => set("organizer", v)} organizers={organizers} />
           </div>
           <div>
             <label className={labelCls}>Days</label>
@@ -669,7 +680,7 @@ function StandingEventPopover({
 
 // ── Main Grid ─────────────────────────────────────────────────────────────────
 
-export function CampGrid({ tracks, activities, series, standingEvents, availableDays, campStartDate, campId, isAdmin, onUpdate, onOpenRoster }: CampGridProps) {
+export function CampGrid({ tracks, activities, series, standingEvents, availableDays, campStartDate, campId, isAdmin, organizers, onUpdate, onOpenRoster }: CampGridProps) {
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -878,28 +889,28 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
         <CreatePopover
           x={popover.x} y={popover.y}
           prefillStart={popover.prefillStart} prefillEnd={popover.prefillEnd} prefillDay={popover.prefillDay}
-          availableDays={availableDays} series={series} standingEvents={standingEvents} campId={campId}
+          availableDays={availableDays} series={series} standingEvents={standingEvents} campId={campId} organizers={organizers}
           onClose={() => setPopover(null)} onCreated={onUpdate}
         />
       )}
       {popover?.kind === "track" && (
         <TrackPopover
           x={popover.x} y={popover.y} track={popover.track}
-          availableDays={availableDays} standingEvents={standingEvents}
+          availableDays={availableDays} standingEvents={standingEvents} organizers={organizers}
           onClose={() => setPopover(null)} onUpdate={onUpdate} onOpenRoster={onOpenRoster}
         />
       )}
       {popover?.kind === "activity" && (
         <ActivityPopover
           x={popover.x} y={popover.y} activity={popover.activity}
-          availableDays={availableDays} series={series} standingEvents={standingEvents}
+          availableDays={availableDays} series={series} standingEvents={standingEvents} organizers={organizers}
           onClose={() => setPopover(null)} onUpdate={onUpdate} onOpenRoster={onOpenRoster}
         />
       )}
       {popover?.kind === "standing" && (
         <StandingEventPopover
           x={popover.x} y={popover.y} event={popover.event}
-          availableDays={availableDays}
+          availableDays={availableDays} organizers={organizers}
           onClose={() => setPopover(null)} onUpdate={onUpdate}
         />
       )}

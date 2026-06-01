@@ -115,7 +115,18 @@ function DayPicker({ value, onChange, availableDays }: { value: string; onChange
 
 // ── Shared form field components ──────────────────────────────────────────────
 
-function TrackFormFields({ form, setForm }: { form: TrackForm; setForm: (f: TrackForm) => void }) {
+const selectCls = "w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100";
+
+function OrganizerSelect({ value, onChange, organizers }: { value: string; onChange: (v: string) => void; organizers: string[] }) {
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)} className={selectCls}>
+      <option value="">— None —</option>
+      {organizers.map(name => <option key={name} value={name}>{name}</option>)}
+    </select>
+  );
+}
+
+function TrackFormFields({ form, setForm, organizers }: { form: TrackForm; setForm: (f: TrackForm) => void; organizers: string[] }) {
   return (
     <div className="grid grid-cols-2 gap-3">
       <div className="col-span-2">
@@ -130,8 +141,7 @@ function TrackFormFields({ form, setForm }: { form: TrackForm; setForm: (f: Trac
       </div>
       <div className="col-span-2">
         <label className="block text-sm font-medium mb-1">Organizer <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
-        <input value={form.organizer} onChange={e => setForm({ ...form, organizer: e.target.value })}
-          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Sam Lopez" />
+        <OrganizerSelect value={form.organizer} onChange={v => setForm({ ...form, organizer: v })} organizers={organizers} />
       </div>
       <div className="col-span-2">
         <label className="block text-sm font-medium mb-1">Description <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
@@ -160,7 +170,7 @@ function TrackFormFields({ form, setForm }: { form: TrackForm; setForm: (f: Trac
   );
 }
 
-function ActivityFormFields({ form, setForm, series, availableDays }: { form: ActivityForm; setForm: (f: ActivityForm) => void; series: ActivitySeries[]; availableDays: string[] }) {
+function ActivityFormFields({ form, setForm, series, availableDays, organizers }: { form: ActivityForm; setForm: (f: ActivityForm) => void; series: ActivitySeries[]; availableDays: string[]; organizers: string[] }) {
   return (
     <div className="grid grid-cols-2 gap-3">
       <div className="col-span-2">
@@ -175,8 +185,7 @@ function ActivityFormFields({ form, setForm, series, availableDays }: { form: Ac
       </div>
       <div className="col-span-2">
         <label className="block text-sm font-medium mb-1">Organizer <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
-        <input value={form.organizer} onChange={e => setForm({ ...form, organizer: e.target.value })}
-          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Sam Lopez" />
+        <OrganizerSelect value={form.organizer} onChange={v => setForm({ ...form, organizer: v })} organizers={organizers} />
       </div>
       <div className="col-span-2">
         <label className="block text-sm font-medium mb-1">Description <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
@@ -234,7 +243,7 @@ function SeriesFormFields({ form, setForm }: { form: SeriesForm; setForm: (f: Se
   );
 }
 
-function StandingFormFields({ form, setForm, availableDays }: { form: StandingForm; setForm: (f: StandingForm) => void; availableDays: string[] }) {
+function StandingFormFields({ form, setForm, availableDays, organizers }: { form: StandingForm; setForm: (f: StandingForm) => void; availableDays: string[]; organizers: string[] }) {
   return (
     <div className="space-y-3">
       <div className="flex gap-2">
@@ -256,8 +265,7 @@ function StandingFormFields({ form, setForm, availableDays }: { form: StandingFo
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">Organizer <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
-        <input value={form.organizer} onChange={e => setForm({ ...form, organizer: e.target.value })}
-          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Kitchen team" />
+        <OrganizerSelect value={form.organizer} onChange={v => setForm({ ...form, organizer: v })} organizers={organizers} />
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">Days</label>
@@ -344,6 +352,7 @@ export default function CampDetailPage() {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [organizers, setOrganizers] = useState<string[]>([]);
 
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const newMenuRef = useRef<HTMLDivElement>(null);
@@ -405,6 +414,9 @@ export default function CampDetailPage() {
     fetch(`/api/admin/camps`).then(r => r.json()).then((camps: { id: string; name: string; start_date: string; end_date: string }[]) => {
       const camp = camps.find(c => c.id === campId);
       if (camp) { setCampName(camp.name); setCampStartDate(camp.start_date); setAvailableDays(daysInRange(camp.start_date, camp.end_date)); }
+    });
+    fetch("/api/admin/admins").then(r => r.ok ? r.json() : []).then((users: { name: string | null }[]) => {
+      setOrganizers(users.map(u => u.name).filter((n): n is string => Boolean(n)));
     });
     loadTracks(); loadActivities(); loadSeries(); loadStandingEvents();
   }, [campId]);
@@ -655,7 +667,7 @@ export default function CampDetailPage() {
 
           {isAdmin && showTrackForm && (
             <form className={formCard} onSubmit={e => { e.preventDefault(); handleCreate("/api/admin/tracks", trackForm, () => { setTrackForm(EMPTY_TRACK); setShowTrackForm(false); loadTracks(); }); }}>
-              <TrackFormFields form={trackForm} setForm={setTrackForm} />
+              <TrackFormFields form={trackForm} setForm={setTrackForm} organizers={organizers} />
               <ConflictWarning conflicts={findStandingEventConflicts(trackForm.start_time, trackForm.end_time, availableDays, standingEvents)} />
               <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Creating…" : "Create track"}</button>
             </form>
@@ -665,7 +677,7 @@ export default function CampDetailPage() {
             <div className="space-y-2">
               {tracks.map(t => editingTrack?.id === t.id ? (
                 <form key={t.id} className={formCard} onSubmit={e => { e.preventDefault(); handleSave(`/api/admin/tracks/${t.id}`, editTrackForm, () => { setEditingTrack(null); loadTracks(); }); }}>
-                  <TrackFormFields form={editTrackForm} setForm={setEditTrackForm} />
+                  <TrackFormFields form={editTrackForm} setForm={setEditTrackForm} organizers={organizers} />
                   <ConflictWarning conflicts={findStandingEventConflicts(editTrackForm.start_time, editTrackForm.end_time, availableDays, standingEvents)} />
                   <div className="flex gap-2">
                     <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Saving…" : "Save"}</button>
@@ -712,7 +724,7 @@ export default function CampDetailPage() {
               if (!activityForm.day) { setError("Please select at least one day."); return; }
               handleCreate("/api/admin/activities", activityForm, () => { setActivityForm(EMPTY_ACTIVITY); setShowActivityForm(false); loadActivities(); });
             }}>
-              <ActivityFormFields form={activityForm} setForm={setActivityForm} series={series} availableDays={availableDays} />
+              <ActivityFormFields form={activityForm} setForm={setActivityForm} series={series} availableDays={availableDays} organizers={organizers} />
               <ConflictWarning conflicts={findStandingEventConflicts(activityForm.start_time, activityForm.end_time, parseDays(activityForm.day), standingEvents)} />
               <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Creating…" : "Create activity"}</button>
             </form>
@@ -726,7 +738,7 @@ export default function CampDetailPage() {
                   if (!editActivityForm.day) { setError("Please select at least one day."); return; }
                   handleSave(`/api/admin/activities/${a.id}`, editActivityForm, () => { setEditingActivity(null); loadActivities(); });
                 }}>
-                  <ActivityFormFields form={editActivityForm} setForm={setEditActivityForm} series={series} availableDays={availableDays} />
+                  <ActivityFormFields form={editActivityForm} setForm={setEditActivityForm} series={series} availableDays={availableDays} organizers={organizers} />
                   <ConflictWarning conflicts={findStandingEventConflicts(editActivityForm.start_time, editActivityForm.end_time, parseDays(editActivityForm.day), standingEvents)} />
                   <div className="flex gap-2">
                     <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Saving…" : "Save"}</button>
@@ -767,6 +779,7 @@ export default function CampDetailPage() {
           campStartDate={campStartDate}
           campId={campId}
           isAdmin={isAdmin}
+          organizers={organizers}
           onUpdate={() => { loadTracks(); loadActivities(); loadStandingEvents(); }}
           onOpenRoster={openRoster}
         />
@@ -1037,7 +1050,7 @@ export default function CampDetailPage() {
               if (!standingForm.day) { setError("Please select at least one day."); return; }
               handleCreate("/api/admin/standing-events", standingForm, () => { setStandingForm(EMPTY_STANDING); setShowStandingForm(false); loadStandingEvents(); });
             }}>
-              <StandingFormFields form={standingForm} setForm={setStandingForm} availableDays={availableDays} />
+              <StandingFormFields form={standingForm} setForm={setStandingForm} availableDays={availableDays} organizers={organizers} />
               <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Creating…" : "Create standing event"}</button>
             </form>
           )}
@@ -1050,7 +1063,7 @@ export default function CampDetailPage() {
                   if (!editStandingForm.day) { setError("Please select at least one day."); return; }
                   handleSave(`/api/admin/standing-events/${ev.id}`, editStandingForm, () => { setEditingStanding(null); loadStandingEvents(); });
                 }}>
-                  <StandingFormFields form={editStandingForm} setForm={setEditStandingForm} availableDays={availableDays} />
+                  <StandingFormFields form={editStandingForm} setForm={setEditStandingForm} availableDays={availableDays} organizers={organizers} />
                   <div className="flex gap-2">
                     <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Saving…" : "Save"}</button>
                     <button type="button" onClick={() => setEditingStanding(null)} className={btnSecondary}>Cancel</button>

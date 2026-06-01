@@ -683,8 +683,11 @@ function StandingEventPopover({
 export function CampGrid({ tracks, activities, series, standingEvents, availableDays, campStartDate, campId, isAdmin, organizers, onUpdate, onOpenRoster }: CampGridProps) {
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [focusDay, setFocusDay] = useState<string | null>(null);
 
   const days = ALL_DAYS.filter(d => availableDays.includes(d));
+  const visibleDays = focusDay ? [focusDay] : days;
+  const focusDayIndex = focusDay ? days.indexOf(focusDay) : -1;
 
   // Auto-scroll to 8 AM on mount
   useEffect(() => {
@@ -699,7 +702,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
 
   // Per-day activity overlap columns
   const actColsByDay: Record<string, Record<string, { col: number; cols: number }>> = {};
-  for (const day of days) {
+  for (const day of visibleDays) {
     const dayActs = activities.filter(a => parseDays(a.day).includes(day));
     actColsByDay[day] = computeColumns(dayActs.map(a => ({
       id: a.id, start: timeToMins(a.start_time), end: timeToMins(a.end_time),
@@ -727,21 +730,70 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
 
   return (
     <div className="select-none">
-      {isAdmin && <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Click any empty area to add an activity or track · Click a block to edit</p>}
+      <div className="flex items-center justify-between mb-3 gap-4">
+        <div>
+          {isAdmin && <p className="text-xs text-gray-400 dark:text-gray-500">Click any empty area to add an activity or track · Click a block to edit</p>}
+          {!isAdmin && <p className="text-xs text-amber-700 dark:text-amber-400">You have read-only access and cannot edit the schedule.</p>}
+        </div>
+        {focusDay && (
+          <button
+            onClick={() => setFocusDay(null)}
+            className="shrink-0 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 border border-gray-300 dark:border-gray-600 rounded px-2.5 py-1 transition-colors"
+          >
+            All days
+          </button>
+        )}
+      </div>
 
-      {!isAdmin && <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">You have read-only access and cannot edit the schedule.</p>}
       <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
 
         {/* Day column headers */}
         <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 sticky top-0 z-10">
-          <div className="w-16 shrink-0" />
-          {days.map(day => {
+          {/* Prev arrow — single-day mode only */}
+          {focusDay ? (
+            <div className="w-16 shrink-0 flex items-center justify-center border-r border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => focusDayIndex > 0 && setFocusDay(days[focusDayIndex - 1])}
+                disabled={focusDayIndex <= 0}
+                className="p-1 rounded text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+                aria-label="Previous day"
+              >
+                ←
+              </button>
+            </div>
+          ) : (
+            <div className="w-16 shrink-0" />
+          )}
+
+          {visibleDays.map(day => {
             const date = dateForDay(day, campStartDate);
-            return (
-              <div key={day} className="flex-1 min-w-28 px-2 py-2 text-center border-l border-gray-200 dark:border-gray-700">
-                <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">{day.slice(0, 3)}</p>
-                {date && <p className="text-xs text-gray-400 dark:text-gray-500">{date}</p>}
+            return focusDay ? (
+              /* Single-day header — full centered label with next arrow */
+              <div key={day} className="flex-1 flex items-center border-l border-gray-200 dark:border-gray-700">
+                <div className="flex-1 px-2 py-2 text-center">
+                  <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{day}</p>
+                  {date && <p className="text-xs text-gray-400 dark:text-gray-500">{date}</p>}
+                </div>
+                <button
+                  onClick={() => focusDayIndex < days.length - 1 && setFocusDay(days[focusDayIndex + 1])}
+                  disabled={focusDayIndex >= days.length - 1}
+                  className="p-1 mr-2 rounded text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Next day"
+                >
+                  →
+                </button>
               </div>
+            ) : (
+              /* All-days header — clickable to drill in */
+              <button
+                key={day}
+                onClick={() => setFocusDay(day)}
+                className="flex-1 min-w-28 px-2 py-2 text-center border-l border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors group"
+                title={`View ${day} only`}
+              >
+                <p className="text-xs font-semibold text-gray-700 dark:text-gray-200 group-hover:text-black dark:group-hover:text-white">{day.slice(0, 3)}</p>
+                {date && <p className="text-xs text-gray-400 dark:text-gray-500">{date}</p>}
+              </button>
             );
           })}
         </div>
@@ -776,7 +828,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
             </div>
 
             {/* Day columns — activities only */}
-            {days.map(day => {
+            {visibleDays.map(day => {
               const dayActs = activities.filter(a => parseDays(a.day).includes(day));
               const colMap = actColsByDay[day];
 

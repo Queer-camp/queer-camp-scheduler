@@ -63,13 +63,14 @@ export default function ActivitySlots({
   onSeriesConfirm,
 }: Props) {
   const [seriesPending, setSeriesPending] = useState<SeriesPending | null>(null);
+  const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   const days = useMemo(() => {
     const map = new Map<string, TimeSlot[]>();
     for (const slot of timeSlots) {
       if (!map.has(slot.day)) map.set(slot.day, []);
       map.get(slot.day)!.push(slot);
     }
-    return Array.from(map.entries());
+    return Array.from(map.entries()).sort(([a], [b]) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b));
   }, [timeSlots]);
 
   function confirmSeries() {

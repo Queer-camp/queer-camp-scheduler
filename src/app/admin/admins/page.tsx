@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAdminRole } from "@/components/admin/AdminRoleContext";
 
 type Admin = {
@@ -32,6 +32,7 @@ export default function AdminsPage() {
   const [addEmailValue, setAddEmailValue] = useState("");
   const [addEmailSaving, setAddEmailSaving] = useState(false);
   const [sendingInviteId, setSendingInviteId] = useState<string | null>(null);
+  const sendInviteOnCreate = useRef(false);
 
   async function load() {
     const [adminsRes, meRes] = await Promise.all([
@@ -51,13 +52,14 @@ export default function AdminsPage() {
     const res = await fetch("/api/admin/admins", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: form.name, email: form.email || null, role: form.role }),
+      body: JSON.stringify({ name: form.name, email: form.email || null, role: form.role, sendInvite: sendInviteOnCreate.current }),
     });
     if (res.ok) {
       const created = await res.json();
+      const didSendInvite = sendInviteOnCreate.current && !!created.email;
       setForm(EMPTY_FORM);
       setShowForm(false);
-      setSuccessMsg(created.email ? `Invite sent to ${created.email} as ${form.role}.` : `${form.name} added as ${form.role}. Add their email later to send an invite.`);
+      setSuccessMsg(didSendInvite ? `Invite sent to ${created.email} as ${form.role}.` : `${form.name} added as ${form.role}.${created.email ? "" : " Add their email later to send an invite."}`);
       await load();
     } else {
       const d = await res.json();
@@ -168,9 +170,26 @@ export default function AdminsPage() {
               ))}
             </div>
           </div>
-          <button type="submit" disabled={saving} className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50">
-            {saving ? "Saving…" : form.email ? "Save & send invite" : "Save"}
-          </button>
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              disabled={saving}
+              onClick={() => { sendInviteOnCreate.current = false; }}
+              className="bg-black dark:bg-white dark:text-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+            {form.email && (
+              <button
+                type="submit"
+                disabled={saving}
+                onClick={() => { sendInviteOnCreate.current = true; }}
+                className="border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2 rounded text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+              >
+                {saving ? "Saving…" : "Save & send invite"}
+              </button>
+            )}
+          </div>
         </form>
       )}
 

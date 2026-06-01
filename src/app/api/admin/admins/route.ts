@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { name, email, role } = await req.json();
+  const { name, email, role, sendInvite } = await req.json();
   if (!name?.trim()) {
     return NextResponse.json({ error: "Name is required." }, { status: 400 });
   }
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: insertErr?.message ?? "Failed to create admin." }, { status: 500 });
   }
 
-  if (trimmedEmail) {
+  if (trimmedEmail && sendInvite) {
     const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/admin/verify-token?token=${insertData.login_token}`;
     try {
       await sendAdminInvite({

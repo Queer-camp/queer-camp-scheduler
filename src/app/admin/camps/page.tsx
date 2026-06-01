@@ -6,6 +6,7 @@ import { formatDateRange } from "@/lib/format";
 import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut";
 import { ShortcutBadge } from "@/components/admin/ShortcutBadge";
 import type { Camp } from "@/types/database";
+import { useAdminRole } from "@/components/admin/AdminRoleContext";
 
 type FullCamp = Camp & { is_active: boolean; archived: boolean };
 
@@ -16,6 +17,7 @@ function isPast(camp: FullCamp) {
 }
 
 export default function CampsPage() {
+  const { isAdmin } = useAdminRole();
   const [camps, setCamps] = useState<FullCamp[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -175,7 +177,7 @@ export default function CampsPage() {
           )}
 
           {/* ⋯ overflow menu */}
-          <div className="relative" ref={menuRef}>
+          {isAdmin && <div className="relative" ref={menuRef}>
             <button
               onClick={() => setOpenMenuId(menuOpen ? null : camp.id)}
               className="p-1.5 rounded text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-lg leading-none"
@@ -239,7 +241,7 @@ export default function CampsPage() {
                 )}
               </div>
             )}
-          </div>
+          </div>}
         </div>
       </div>
     );
@@ -249,12 +251,14 @@ export default function CampsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Camps</h1>
-        <button onClick={() => setShowForm(!showForm)} className="bg-black dark:bg-white dark:text-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-100">
-          {showForm ? "Cancel" : <span>New camp<ShortcutBadge>N</ShortcutBadge></span>}
-        </button>
+        {isAdmin && (
+          <button onClick={() => setShowForm(!showForm)} className="bg-black dark:bg-white dark:text-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-100">
+            {showForm ? "Cancel" : <span>New camp<ShortcutBadge>N</ShortcutBadge></span>}
+          </button>
+        )}
       </div>
 
-      {showForm && (
+      {isAdmin && showForm && (
         <form onSubmit={handleCreate} className="mb-8 p-6 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
           <h2 className="font-semibold">New camp</h2>
           {error && <p className="text-sm text-red-600">{error}</p>}

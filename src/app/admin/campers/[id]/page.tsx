@@ -4,6 +4,7 @@ import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatTime, formatDay, formatDateRange } from "@/lib/format";
+import { useAdminRole } from "@/components/admin/AdminRoleContext";
 
 type Activity = {
   id: string;
@@ -61,6 +62,7 @@ type Camp = {
 };
 
 export default function CamperDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { isAdmin } = useAdminRole();
   const { id } = use(params);
   const router = useRouter();
   const [camper, setCamper] = useState<Camper | null>(null);
@@ -226,7 +228,7 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
           >
             Print schedule ↗
           </a>
-          {camper.email && (
+          {isAdmin && camper.email && (
             <button
               onClick={resendLink}
               disabled={resending}
@@ -242,7 +244,7 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
       <section className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Track</h2>
-          {!editingTrack && (
+          {isAdmin && !editingTrack && (
             <button onClick={() => setEditingTrack(true)} className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
               {camper.tracks ? "Change" : "Assign"}
             </button>
@@ -290,15 +292,17 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
       <section className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Activities</h2>
-          <button
-            onClick={() => setAddingActivity(!addingActivity)}
-            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline"
-          >
-            {addingActivity ? "Cancel" : "Add activity"}
-          </button>
+            {isAdmin && (
+            <button
+              onClick={() => setAddingActivity(!addingActivity)}
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline"
+            >
+              {addingActivity ? "Cancel" : "Add activity"}
+            </button>
+          )}
         </div>
 
-        {addingActivity && (
+        {isAdmin && addingActivity && (
           <div className="mb-4 p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg flex items-center gap-3">
             <select
               value={selectedActivityId}
@@ -339,12 +343,14 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
                         <span className="text-sm font-medium">{act.name}</span>
                         <span className="text-sm text-gray-400 dark:text-gray-500">{formatTime(act.start_time)} – {formatTime(act.end_time)}</span>
                       </div>
-                      <button
-                        onClick={() => removeRegistration(act.id)}
-                        className="text-xs text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 underline"
-                      >
-                        Remove
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => removeRegistration(act.id)}
+                          className="text-xs text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 underline"
+                        >
+                          Remove
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -355,7 +361,7 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
       </section>
 
       {/* Move to camp */}
-      {otherCamps.length > 0 && (
+      {isAdmin && otherCamps.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Move to camp</h2>
@@ -413,7 +419,7 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
       )}
 
       {/* Danger zone */}
-      <section className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700 space-y-3">
+      {isAdmin && <section className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700 space-y-3">
         {confirmRemove === null && (
           <div className="flex items-center gap-6">
             <button
@@ -456,7 +462,7 @@ export default function CamperDetailPage({ params }: { params: Promise<{ id: str
             </div>
           </div>
         )}
-      </section>
+      </section>}
     </div>
   );
 }

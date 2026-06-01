@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatDateRange } from "@/lib/format";
 import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut";
 import { ShortcutBadge } from "@/components/admin/ShortcutBadge";
+import { useAdminRole } from "@/components/admin/AdminRoleContext";
 
 type Camp = {
   id: string;
@@ -28,6 +29,7 @@ type CamperRow = {
 };
 
 export default function CampersPage() {
+  const { isAdmin } = useAdminRole();
   const [camps, setCamps] = useState<Camp[]>([]);
   const [selectedCampId, setSelectedCampId] = useState<string>("");
   const [showAll, setShowAll] = useState(false);
@@ -169,7 +171,7 @@ export default function CampersPage() {
           {!loadingCampers && (
             <span className="text-sm text-gray-500 dark:text-gray-400">{campers.length} registered</span>
           )}
-          {!loadingCampers && campers.length > 0 && !showAll && (
+          {isAdmin && !loadingCampers && campers.length > 0 && !showAll && (
             <button
               onClick={() => selecting ? exitSelecting() : setSelecting(true)}
               className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline"
@@ -177,7 +179,7 @@ export default function CampersPage() {
               {selecting ? "Cancel" : <span>Select<ShortcutBadge>S</ShortcutBadge></span>}
             </button>
           )}
-          {!showAll && selectedCampId && (
+          {isAdmin && !showAll && selectedCampId && (
             <button
               onClick={() => { setShowNewForm(v => !v); setNewError(null); exitSelecting(); }}
               className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800"
@@ -214,7 +216,7 @@ export default function CampersPage() {
       )}
 
       {/* New camper form */}
-      {showNewForm && !showAll && (
+      {isAdmin && showNewForm && !showAll && (
         <form onSubmit={handleCreateCamper} className="mb-6 p-6 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
           <h2 className="font-semibold">New camper</h2>
           {newError && <p className="text-sm text-red-600">{newError}</p>}
@@ -340,7 +342,7 @@ export default function CampersPage() {
       )}
 
       {/* Sticky action bar */}
-      {selecting && selected.size > 0 && (
+      {isAdmin && selecting && selected.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-lg px-6 py-4">
           <div className="max-w-5xl mx-auto flex flex-col gap-3">
             <p className="text-sm font-medium text-gray-900 dark:text-white">{selected.size} camper{selected.size === 1 ? "" : "s"} selected</p>

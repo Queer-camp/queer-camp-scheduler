@@ -10,6 +10,7 @@ import { CampGrid } from "@/components/admin/CampGrid";
 import type { RosterTarget as GridRosterTarget } from "@/components/admin/CampGrid";
 import { ConflictWarning } from "@/components/admin/ConflictWarning";
 import { findStandingEventConflicts } from "@/lib/conflicts";
+import { useAdminRole } from "@/components/admin/AdminRoleContext";
 
 type Tab = "tracks" | "activities" | "series" | "grid" | "standing";
 
@@ -295,6 +296,7 @@ type TrackWithCount = Track & { enrolled: number };
 type ActivityWithCount = Activity & { enrolled: number };
 
 export default function CampDetailPage() {
+  const { isAdmin } = useAdminRole();
   const { id: campId } = useParams<{ id: string }>();
   const [tab, setTab] = useState<Tab>("tracks");
   const [campName, setCampName] = useState("");
@@ -597,13 +599,15 @@ export default function CampDetailPage() {
               <a href={`/api/admin/camps/${campId}/campers.csv`} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
                 Export campers (CSV)
               </a>
-              <button onClick={openImport} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
-                Import from another camp…
-              </button>
+              {isAdmin && (
+                <button onClick={openImport} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline">
+                  Import from another camp…
+                </button>
+              )}
             </div>
           )}
         </div>
-        <div className="relative shrink-0 mt-1" ref={newMenuRef}>
+        {isAdmin && <div className="relative shrink-0 mt-1" ref={newMenuRef}>
           <button onClick={() => setNewMenuOpen(o => !o)}
             className="flex items-center gap-1.5 bg-black text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-gray-800">
             + New <span className="opacity-60 text-xs">▾</span>
@@ -624,7 +628,7 @@ export default function CampDetailPage() {
               </button>
             </div>
           )}
-        </div>
+        </div>}
       </div>
 
       <div className="flex gap-0 border-b border-gray-200 dark:border-gray-700 mb-6">
@@ -642,12 +646,14 @@ export default function CampDetailPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Tracks</h2>
-            <button onClick={() => { setShowTrackForm(!showTrackForm); setEditingTrack(null); }} className={btnPrimary}>
-              {showTrackForm ? "Cancel" : "New track"}
-            </button>
+            {isAdmin && (
+              <button onClick={() => { setShowTrackForm(!showTrackForm); setEditingTrack(null); }} className={btnPrimary}>
+                {showTrackForm ? "Cancel" : "New track"}
+              </button>
+            )}
           </div>
 
-          {showTrackForm && (
+          {isAdmin && showTrackForm && (
             <form className={formCard} onSubmit={e => { e.preventDefault(); handleCreate("/api/admin/tracks", trackForm, () => { setTrackForm(EMPTY_TRACK); setShowTrackForm(false); loadTracks(); }); }}>
               <TrackFormFields form={trackForm} setForm={setTrackForm} />
               <ConflictWarning conflicts={findStandingEventConflicts(trackForm.start_time, trackForm.end_time, availableDays, standingEvents)} />
@@ -678,8 +684,8 @@ export default function CampDetailPage() {
                   </div>
                   <div className="flex gap-3 ml-4 shrink-0">
                     <button onClick={() => openRoster({ type: "track", id: t.id, name: t.name, capacity: t.capacity })} className={btnRoster}>Roster</button>
-                    <button onClick={() => { setEditingTrack(t); setEditTrackForm(trackToForm(t)); setShowTrackForm(false); }} className={btnSecondary}>Edit</button>
-                    <button onClick={() => handleDelete(`/api/admin/tracks/${t.id}`, "Delete this track? Campers assigned to it will lose their track assignment.", loadTracks)} className={btnDanger}>Delete</button>
+                    {isAdmin && <button onClick={() => { setEditingTrack(t); setEditTrackForm(trackToForm(t)); setShowTrackForm(false); }} className={btnSecondary}>Edit</button>}
+                    {isAdmin && <button onClick={() => handleDelete(`/api/admin/tracks/${t.id}`, "Delete this track? Campers assigned to it will lose their track assignment.", loadTracks)} className={btnDanger}>Delete</button>}
                   </div>
                 </div>
               ))}
@@ -693,12 +699,14 @@ export default function CampDetailPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Activities</h2>
-            <button onClick={() => { setShowActivityForm(!showActivityForm); setEditingActivity(null); }} className={btnPrimary}>
-              {showActivityForm ? "Cancel" : "New activity"}
-            </button>
+            {isAdmin && (
+              <button onClick={() => { setShowActivityForm(!showActivityForm); setEditingActivity(null); }} className={btnPrimary}>
+                {showActivityForm ? "Cancel" : "New activity"}
+              </button>
+            )}
           </div>
 
-          {showActivityForm && (
+          {isAdmin && showActivityForm && (
             <form className={formCard} onSubmit={e => {
               e.preventDefault();
               if (!activityForm.day) { setError("Please select at least one day."); return; }
@@ -738,8 +746,8 @@ export default function CampDetailPage() {
                   </div>
                   <div className="flex gap-3 ml-4 shrink-0">
                     <button onClick={() => openRoster({ type: "activity", id: a.id, name: a.name, capacity: a.capacity })} className={btnRoster}>Roster</button>
-                    <button onClick={() => { setEditingActivity(a); setEditActivityForm(activityToForm(a)); setShowActivityForm(false); }} className={btnSecondary}>Edit</button>
-                    <button onClick={() => handleDelete(`/api/admin/activities/${a.id}`, "Delete this activity? All registrations for it will be removed.", loadActivities)} className={btnDanger}>Delete</button>
+                    {isAdmin && <button onClick={() => { setEditingActivity(a); setEditActivityForm(activityToForm(a)); setShowActivityForm(false); }} className={btnSecondary}>Edit</button>}
+                    {isAdmin && <button onClick={() => handleDelete(`/api/admin/activities/${a.id}`, "Delete this activity? All registrations for it will be removed.", loadActivities)} className={btnDanger}>Delete</button>}
                   </div>
                 </div>
               ))}
@@ -758,6 +766,7 @@ export default function CampDetailPage() {
           availableDays={availableDays}
           campStartDate={campStartDate}
           campId={campId}
+          isAdmin={isAdmin}
           onUpdate={() => { loadTracks(); loadActivities(); loadStandingEvents(); }}
           onOpenRoster={openRoster}
         />
@@ -895,7 +904,7 @@ export default function CampDetailPage() {
                                 <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">{c.pronouns}</span>
                               )}
                             </div>
-                            {movingCamperId !== c.id && (
+                            {isAdmin && movingCamperId !== c.id && (
                               <div className="flex gap-3 ml-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button
                                   onClick={() => { setMovingCamperId(c.id); setRosterError(null); }}
@@ -950,7 +959,7 @@ export default function CampDetailPage() {
                   )}
 
                   {/* Add camper */}
-                  {rosterData.available.length > 0 && (
+                  {isAdmin && rosterData.available.length > 0 && (
                     <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                         {rosterTarget.type === "track" ? "Add or move a camper" : "Add a camper"}
@@ -1015,12 +1024,14 @@ export default function CampDetailPage() {
               <h2 className="text-lg font-semibold">Standing Events</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Camp-wide time blocks that appear on everyone's schedule — meals, ceremonies, breaks.</p>
             </div>
-            <button onClick={() => { setShowStandingForm(!showStandingForm); setEditingStanding(null); }} className={btnPrimary}>
-              {showStandingForm ? "Cancel" : "New standing event"}
-            </button>
+            {isAdmin && (
+              <button onClick={() => { setShowStandingForm(!showStandingForm); setEditingStanding(null); }} className={btnPrimary}>
+                {showStandingForm ? "Cancel" : "New standing event"}
+              </button>
+            )}
           </div>
 
-          {showStandingForm && (
+          {isAdmin && showStandingForm && (
             <form className={formCard} onSubmit={e => {
               e.preventDefault();
               if (!standingForm.day) { setError("Please select at least one day."); return; }
@@ -1053,10 +1064,12 @@ export default function CampDetailPage() {
                     {ev.location && <p className="text-sm text-gray-500 dark:text-gray-400">📍 {ev.location}</p>}
                     {ev.organizer && <p className="text-sm text-gray-500 dark:text-gray-400">👤 {ev.organizer}</p>}
                   </div>
-                  <div className="flex gap-3 ml-4 shrink-0">
-                    <button onClick={() => { setEditingStanding(ev); setEditStandingForm(standingToForm(ev)); setShowStandingForm(false); }} className={btnSecondary}>Edit</button>
-                    <button onClick={() => handleDelete(`/api/admin/standing-events/${ev.id}`, `Delete "${ev.name}"?`, loadStandingEvents)} className={btnDanger}>Delete</button>
-                  </div>
+                  {isAdmin && (
+                    <div className="flex gap-3 ml-4 shrink-0">
+                      <button onClick={() => { setEditingStanding(ev); setEditStandingForm(standingToForm(ev)); setShowStandingForm(false); }} className={btnSecondary}>Edit</button>
+                      <button onClick={() => handleDelete(`/api/admin/standing-events/${ev.id}`, `Delete "${ev.name}"?`, loadStandingEvents)} className={btnDanger}>Delete</button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1069,13 +1082,15 @@ export default function CampDetailPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Activity Series</h2>
-            <button onClick={() => { setShowSeriesForm(!showSeriesForm); setEditingSeries(null); }} className={btnPrimary}>
-              {showSeriesForm ? "Cancel" : "New series"}
-            </button>
+            {isAdmin && (
+              <button onClick={() => { setShowSeriesForm(!showSeriesForm); setEditingSeries(null); }} className={btnPrimary}>
+                {showSeriesForm ? "Cancel" : "New series"}
+              </button>
+            )}
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Create a series first, then assign activities to it. Campers who pick one activity in a series are auto-enrolled in all others.</p>
 
-          {showSeriesForm && (
+          {isAdmin && showSeriesForm && (
             <form className={formCard} onSubmit={e => { e.preventDefault(); handleCreate("/api/admin/series", seriesForm, () => { setSeriesForm(EMPTY_SERIES); setShowSeriesForm(false); loadSeries(); }); }}>
               <SeriesFormFields form={seriesForm} setForm={setSeriesForm} />
               <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Creating…" : "Create series"}</button>
@@ -1099,10 +1114,12 @@ export default function CampDetailPage() {
                     {s.description && <p className="text-sm text-gray-500 dark:text-gray-400">{s.description}</p>}
                     {(() => { const linked = activities.filter(a => a.series_id === s.id); return linked.length > 0 ? <p className="text-sm text-gray-500 dark:text-gray-400">{linked.map(a => a.name).join(", ")}</p> : null; })()}
                   </div>
-                  <div className="flex gap-3 ml-4 shrink-0">
-                    <button onClick={() => { setEditingSeries(s); setEditSeriesForm(seriesToForm(s)); setShowSeriesForm(false); }} className={btnSecondary}>Edit</button>
-                    <button onClick={() => handleDelete(`/api/admin/series/${s.id}`, "Delete this series? Activities in it will become standalone.", loadSeries)} className={btnDanger}>Delete</button>
-                  </div>
+                  {isAdmin && (
+                    <div className="flex gap-3 ml-4 shrink-0">
+                      <button onClick={() => { setEditingSeries(s); setEditSeriesForm(seriesToForm(s)); setShowSeriesForm(false); }} className={btnSecondary}>Edit</button>
+                      <button onClick={() => handleDelete(`/api/admin/series/${s.id}`, "Delete this series? Activities in it will become standalone.", loadSeries)} className={btnDanger}>Delete</button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

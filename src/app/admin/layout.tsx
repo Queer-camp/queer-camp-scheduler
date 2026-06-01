@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useKeyboardShortcut, useSequenceShortcuts } from "@/hooks/useKeyboardShortcut";
 import { KeyboardShortcutsModal } from "@/components/admin/KeyboardShortcutsModal";
 import { ThemeProvider, useTheme } from "@/components/admin/ThemeProvider";
+import { AdminRoleContext } from "@/components/admin/AdminRoleContext";
 
 type Me = { id: string; name: string | null; email: string; role: string };
 
@@ -119,14 +120,23 @@ function AdminNav() {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const RAINBOW = "#d93025, #f5810e, #f5c23e, #5dbb46, #4b96f3, #7c3aed, #e879a8";
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/me").then(r => r.ok ? r.json() : null).then(data => {
+      if (data?.role) setRole(data.role);
+    });
+  }, []);
 
   return (
     <ThemeProvider>
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 text-gray-900 dark:text-gray-100">
-        <div className="h-2" style={{ background: `linear-gradient(to right, ${RAINBOW})` }} />
-        <AdminNav />
-        <main className="max-w-5xl mx-auto px-6 py-8">{children}</main>
-      </div>
+      <AdminRoleContext.Provider value={role}>
+        <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 text-gray-900 dark:text-gray-100">
+          <div className="h-2" style={{ background: `linear-gradient(to right, ${RAINBOW})` }} />
+          <AdminNav />
+          <main className="max-w-5xl mx-auto px-6 py-8">{children}</main>
+        </div>
+      </AdminRoleContext.Provider>
     </ThemeProvider>
   );
 }

@@ -26,6 +26,7 @@ interface CampGridProps {
   availableDays: string[];
   campStartDate: string;
   campId: string;
+  isAdmin: boolean;
   onUpdate: () => void;
   onOpenRoster: (target: RosterTarget) => void;
 }
@@ -668,7 +669,7 @@ function StandingEventPopover({
 
 // ── Main Grid ─────────────────────────────────────────────────────────────────
 
-export function CampGrid({ tracks, activities, series, standingEvents, availableDays, campStartDate, campId, onUpdate, onOpenRoster }: CampGridProps) {
+export function CampGrid({ tracks, activities, series, standingEvents, availableDays, campStartDate, campId, isAdmin, onUpdate, onOpenRoster }: CampGridProps) {
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -700,6 +701,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
   })));
 
   function handleColumnClick(e: React.MouseEvent<HTMLDivElement>, day: string) {
+    if (!isAdmin) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const relY = e.clientY - rect.top;
     const clickMins = yToMins(relY);
@@ -714,8 +716,9 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
 
   return (
     <div className="select-none">
-      <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Click any empty area to add an activity or track · Click a block to edit</p>
+      {isAdmin && <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Click any empty area to add an activity or track · Click a block to edit</p>}
 
+      {!isAdmin && <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">You have read-only access and cannot edit the schedule.</p>}
       <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
 
         {/* Day column headers */}
@@ -794,8 +797,8 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                           width: `calc(${widthPct}% - 4px)`,
                           zIndex: 2,
                         }}
-                        className="rounded-md border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900 px-1.5 py-1 overflow-hidden cursor-pointer hover:brightness-95 transition-[filter]"
-                        onClick={e => { e.stopPropagation(); setPopover({ kind: "track", x: e.clientX, y: e.clientY, track }); }}>
+                        className={`rounded-md border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900 px-1.5 py-1 overflow-hidden transition-[filter] ${isAdmin ? "cursor-pointer hover:brightness-95" : "cursor-default"}`}
+                        onClick={e => { e.stopPropagation(); if (isAdmin) setPopover({ kind: "track", x: e.clientX, y: e.clientY, track }); }}>
                         <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 truncate leading-tight">
                           {track.emoji ? `${track.emoji} ` : ""}{track.name}
                         </p>
@@ -821,8 +824,8 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                     return (
                       <div key={ev.id}
                         style={{ position: "absolute", top, height, left: 2, right: 2, zIndex: 4 }}
-                        className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-100/80 dark:bg-amber-900/50 px-1.5 py-1 overflow-hidden cursor-pointer hover:brightness-95 transition-[filter]"
-                        onClick={e => { e.stopPropagation(); setPopover({ kind: "standing", x: e.clientX, y: e.clientY, event: ev }); }}>
+                        className={`rounded-md border border-amber-300 dark:border-amber-700 bg-amber-100/80 dark:bg-amber-900/50 px-1.5 py-1 overflow-hidden transition-[filter] ${isAdmin ? "cursor-pointer hover:brightness-95" : "cursor-default"}`}
+                        onClick={e => { e.stopPropagation(); if (isAdmin) setPopover({ kind: "standing", x: e.clientX, y: e.clientY, event: ev }); }}>
                         <p className="text-xs font-semibold text-amber-900 dark:text-amber-100 truncate leading-tight">
                           {ev.emoji ? `${ev.emoji} ` : ""}{ev.name}
                         </p>
@@ -849,8 +852,8 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                           width: `calc(${widthPct}% - 4px)`,
                           zIndex: 3,
                         }}
-                        className="rounded-md border border-purple-300 dark:border-purple-700 bg-purple-100 dark:bg-purple-900 px-1.5 py-1 overflow-hidden cursor-pointer hover:brightness-95 transition-[filter]"
-                        onClick={e => { e.stopPropagation(); setPopover({ kind: "activity", x: e.clientX, y: e.clientY, activity }); }}>
+                        className={`rounded-md border border-purple-300 dark:border-purple-700 bg-purple-100 dark:bg-purple-900 px-1.5 py-1 overflow-hidden transition-[filter] ${isAdmin ? "cursor-pointer hover:brightness-95" : "cursor-default"}`}
+                        onClick={e => { e.stopPropagation(); if (isAdmin) setPopover({ kind: "activity", x: e.clientX, y: e.clientY, activity }); }}>
                         <p className="text-xs font-semibold text-purple-900 dark:text-purple-100 truncate leading-tight">
                           {activity.emoji ? `${activity.emoji} ` : ""}{activity.name}
                         </p>

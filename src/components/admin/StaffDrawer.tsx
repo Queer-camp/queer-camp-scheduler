@@ -38,11 +38,13 @@ export function StaffDrawer({
   onClose,
   onUpdated,
   meId,
+  isAdmin,
 }: {
   staffId: string;
   onClose: () => void;
   onUpdated: () => void;
   meId: string | null;
+  isAdmin: boolean;
 }) {
   const [detail, setDetail] = useState<StaffDetail | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -162,8 +164,8 @@ export function StaffDrawer({
           <div className="p-6 text-sm text-red-500">Failed to load.</div>
         ) : (
           <div className="flex-1 overflow-y-auto">
-            {/* Edit info */}
-            <section className="px-6 py-5 border-b border-gray-100 dark:border-gray-800">
+            {/* Edit info — admins only */}
+            {isAdmin && <section className="px-6 py-5 border-b border-gray-100 dark:border-gray-800">
               <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">Info</h3>
               <div className="space-y-3">
                 <div>
@@ -213,7 +215,7 @@ export function StaffDrawer({
                 )}
                 {isSelf && <p className="text-xs text-gray-400 dark:text-gray-500">Edit your own profile from the Profile page.</p>}
               </div>
-            </section>
+            </section>}
 
             {/* Assigned events */}
             <section className="px-6 py-5 border-b border-gray-100 dark:border-gray-800">
@@ -245,8 +247,8 @@ export function StaffDrawer({
               })()}
             </section>
 
-            {/* Notes */}
-            <section className="px-6 py-5">
+            {/* Notes — admins only */}
+            {isAdmin && <section className="px-6 py-5">
               <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">Notes</h3>
               <div className="space-y-2 mb-4">
                 <textarea
@@ -281,7 +283,7 @@ export function StaffDrawer({
                   ))}
                 </div>
               )}
-            </section>
+            </section>}
           </div>
         )}
       </div>

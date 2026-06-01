@@ -319,6 +319,7 @@ export default function AdminsPage() {
           onClose={() => setDrawerStaffId(null)}
           onUpdated={() => { load(); }}
           meId={me?.id ?? null}
+          isAdmin={isAdmin}
         />
       )}
     </div>

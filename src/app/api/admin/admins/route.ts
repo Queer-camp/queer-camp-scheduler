@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   if (!name?.trim() || !email?.trim()) {
     return NextResponse.json({ error: "Name and email are required." }, { status: 400 });
   }
-  const resolvedRole = role === "staff" ? "staff" : "admin";
+  const resolvedRole = role === "leader" ? "leader" : "admin";
 
   const supabase = createAdminClient();
 

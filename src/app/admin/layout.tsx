@@ -53,7 +53,7 @@ function AdminNav() {
           <Link href="/admin/camps" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Camps</Link>
           <Link href="/admin/campers" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Campers</Link>
           <Link href="/admin/broadcast" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Broadcast</Link>
-          <Link href="/admin/admins" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Admins</Link>
+          <Link href="/admin/admins" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Staff</Link>
         </div>
 
         <div className="flex items-center gap-3">

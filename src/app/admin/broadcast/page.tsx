@@ -120,7 +120,7 @@ export default function BroadcastPage() {
     return (
       <div>
         <h1 className="text-2xl font-bold mb-3">Broadcast</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Only admins can send broadcasts. Staff have read-only access.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Only admins can send broadcasts. Leaders have read-only access.</p>
       </div>
     );
   }
@@ -167,7 +167,7 @@ export default function BroadcastPage() {
                 <option value="camp">All campers in active camp{activeCamp ? ` (${activeCamp.name})` : ""}</option>
                 <option value="track" disabled={!activeCamp || tracks.length === 0}>Specific track…</option>
                 <option value="activity" disabled={!activeCamp || activities.length === 0}>Specific activity…</option>
-                <option value="team">All admins + staff</option>
+                <option value="team">All admins + leaders</option>
               </select>
 
               {filterType === "track" && (

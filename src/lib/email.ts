@@ -48,9 +48,9 @@ export async function sendAdminInvite({
   name: string;
   inviteUrl: string;
   invitedBy: string;
-  role: "admin" | "staff";
+  role: "admin" | "leader";
 }) {
-  const roleLabel = role === "staff" ? "a staff member" : "an admin";
+  const roleLabel = role === "leader" ? "a leader" : "an admin";
   await transporter.sendMail({
     from: `Queer Camp <${process.env.SMTP_USER}>`,
     to,

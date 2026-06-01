@@ -33,6 +33,16 @@ interface CampGridProps {
   onOpenRoster: (target: RosterTarget) => void;
 }
 
+function ReadOnlyField({ label, value, show }: { label: string; value: string; show: boolean }) {
+  if (!show) return null;
+  return (
+    <div>
+      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">{label}</p>
+      <p className="text-sm text-gray-800 dark:text-gray-200">{value || <span className="text-gray-400 dark:text-gray-500 italic">—</span>}</p>
+    </div>
+  );
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const SLOT_HEIGHT = 48;        // px per 30-min slot
@@ -359,10 +369,11 @@ function CreatePopover({
 // ── Track Detail Popover ──────────────────────────────────────────────────────
 
 function TrackPopover({
-  x, y, track, availableDays, standingEvents, organizers, onClose, onUpdate, onOpenRoster,
+  x, y, track, availableDays, standingEvents, organizers, isAdmin, onClose, onUpdate, onOpenRoster,
 }: {
   x: number; y: number; track: TrackWithCount;
   availableDays: string[]; standingEvents: StandingEvent[]; organizers: string[];
+  isAdmin: boolean;
   onClose: () => void; onUpdate: () => void; onOpenRoster: (t: RosterTarget) => void;
 }) {
   const [form, setForm] = useState({
@@ -418,31 +429,35 @@ function TrackPopover({
         </div>
 
         <div className="px-4 py-3 space-y-3">
-          <div>
-            <label className={labelCls}>Location</label>
-            <input value={form.location} onChange={e => set("location", e.target.value)} placeholder="Room, building…" className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Organizer</label>
-            <OrganizerSelect value={form.organizer} onChange={v => set("organizer", v)} organizers={organizers} />
-          </div>
+          <ReadOnlyField label="Location" value={form.location} show={!isAdmin} />
+          <ReadOnlyField label="Organizer" value={form.organizer} show={!isAdmin} />
+          {isAdmin && <>
+            <div>
+              <label className={labelCls}>Location</label>
+              <input value={form.location} onChange={e => set("location", e.target.value)} placeholder="Room, building…" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Organizer</label>
+              <OrganizerSelect value={form.organizer} onChange={v => set("organizer", v)} organizers={organizers} />
+            </div>
+          </>}
           <div>
             <label className={labelCls}>Start time</label>
-            <TimePicker value={form.start_time} onChange={v => set("start_time", v)} />
+            {isAdmin ? <TimePicker value={form.start_time} onChange={v => set("start_time", v)} /> : <p className="text-sm text-gray-700 dark:text-gray-300">{formatTime(form.start_time)}</p>}
           </div>
           <div>
             <label className={labelCls}>End time</label>
-            <TimePicker value={form.end_time} onChange={v => set("end_time", v)} />
+            {isAdmin ? <TimePicker value={form.end_time} onChange={v => set("end_time", v)} /> : <p className="text-sm text-gray-700 dark:text-gray-300">{formatTime(form.end_time)}</p>}
           </div>
-          <div>
+          {isAdmin && <div>
             <label className={labelCls}>Capacity</label>
             <input required type="number" min="1" value={form.capacity} onChange={e => set("capacity", e.target.value)} className={inputCls} />
-          </div>
-          <div>
+          </div>}
+          {isAdmin && <div>
             <label className={labelCls}>Description <span className="font-normal opacity-60">(optional)</span></label>
             <input value={form.description} onChange={e => set("description", e.target.value)} className={inputCls} />
-          </div>
-          <ConflictWarning conflicts={findStandingEventConflicts(form.start_time, form.end_time, availableDays, standingEvents)} />
+          </div>}
+          {isAdmin && <ConflictWarning conflicts={findStandingEventConflicts(form.start_time, form.end_time, availableDays, standingEvents)} />}
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
         </div>
 
@@ -450,12 +465,12 @@ function TrackPopover({
           <div className="flex gap-3">
             <button type="button" onClick={() => { onOpenRoster({ type: "track", id: track.id, name: track.name, capacity: track.capacity }); onClose(); }}
               className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-medium">Roster</button>
-            <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline">Delete</button>
+            {isAdmin && <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline">Delete</button>}
           </div>
-          <button type="submit" disabled={saving}
+          {isAdmin && <button type="submit" disabled={saving}
             className="px-4 py-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 transition-colors">
             {saving ? "Saving…" : "Save"}
-          </button>
+          </button>}
         </div>
       </form>
     </Popover>
@@ -465,10 +480,11 @@ function TrackPopover({
 // ── Activity Detail Popover ───────────────────────────────────────────────────
 
 function ActivityPopover({
-  x, y, activity, availableDays, series, standingEvents, organizers, onClose, onUpdate, onOpenRoster,
+  x, y, activity, availableDays, series, standingEvents, organizers, isAdmin, onClose, onUpdate, onOpenRoster,
 }: {
   x: number; y: number; activity: ActivityWithCount;
   availableDays: string[]; series: ActivitySeries[]; standingEvents: StandingEvent[]; organizers: string[];
+  isAdmin: boolean;
   onClose: () => void; onUpdate: () => void; onOpenRoster: (t: RosterTarget) => void;
 }) {
   const [form, setForm] = useState({
@@ -526,27 +542,31 @@ function ActivityPopover({
         </div>
 
         <div className="px-4 py-3 space-y-3">
-          <div>
-            <label className={labelCls}>Location</label>
-            <input value={form.location} onChange={e => set("location", e.target.value)} placeholder="Room, building…" className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Organizer</label>
-            <OrganizerSelect value={form.organizer} onChange={v => set("organizer", v)} organizers={organizers} />
-          </div>
+          <ReadOnlyField label="Location" value={form.location} show={!isAdmin} />
+          <ReadOnlyField label="Organizer" value={form.organizer} show={!isAdmin} />
+          {isAdmin && <>
+            <div>
+              <label className={labelCls}>Location</label>
+              <input value={form.location} onChange={e => set("location", e.target.value)} placeholder="Room, building…" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Organizer</label>
+              <OrganizerSelect value={form.organizer} onChange={v => set("organizer", v)} organizers={organizers} />
+            </div>
+          </>}
           <div>
             <label className={labelCls}>Days</label>
-            <MiniDayPicker value={form.day} onChange={v => set("day", v)} availableDays={availableDays} />
+            {isAdmin ? <MiniDayPicker value={form.day} onChange={v => set("day", v)} availableDays={availableDays} /> : <p className="text-sm text-gray-700 dark:text-gray-300">{form.day || "—"}</p>}
           </div>
           <div>
             <label className={labelCls}>Start time</label>
-            <TimePicker value={form.start_time} onChange={v => set("start_time", v)} />
+            {isAdmin ? <TimePicker value={form.start_time} onChange={v => set("start_time", v)} /> : <p className="text-sm text-gray-700 dark:text-gray-300">{formatTime(form.start_time)}</p>}
           </div>
           <div>
             <label className={labelCls}>End time</label>
-            <TimePicker value={form.end_time} onChange={v => set("end_time", v)} />
+            {isAdmin ? <TimePicker value={form.end_time} onChange={v => set("end_time", v)} /> : <p className="text-sm text-gray-700 dark:text-gray-300">{formatTime(form.end_time)}</p>}
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          {isAdmin && <div className="grid grid-cols-2 gap-2">
             <div>
               <label className={labelCls}>Capacity</label>
               <input required type="number" min="1" value={form.capacity} onChange={e => set("capacity", e.target.value)} className={inputCls} />
@@ -561,16 +581,16 @@ function ActivityPopover({
                 </select>
               </div>
             )}
-          </div>
-          <div>
+          </div>}
+          {isAdmin && <div>
             <label className={labelCls}>Description <span className="font-normal opacity-60">(optional)</span></label>
             <input value={form.description} onChange={e => set("description", e.target.value)} className={inputCls} />
-          </div>
-          <ConflictWarning conflicts={findStandingEventConflicts(
+          </div>}
+          {isAdmin && <ConflictWarning conflicts={findStandingEventConflicts(
             form.start_time, form.end_time,
             form.day ? form.day.split(",").map(d => d.trim()).filter(Boolean) : [],
             standingEvents,
-          )} />
+          )} />}
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
         </div>
 
@@ -578,12 +598,12 @@ function ActivityPopover({
           <div className="flex gap-3">
             <button type="button" onClick={() => { onOpenRoster({ type: "activity", id: activity.id, name: activity.name, capacity: activity.capacity }); onClose(); }}
               className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-medium">Roster</button>
-            <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline">Delete</button>
+            {isAdmin && <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline">Delete</button>}
           </div>
-          <button type="submit" disabled={saving}
+          {isAdmin && <button type="submit" disabled={saving}
             className="px-4 py-1.5 text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white rounded-lg disabled:opacity-50 transition-colors">
             {saving ? "Saving…" : "Save"}
-          </button>
+          </button>}
         </div>
       </form>
     </Popover>
@@ -593,10 +613,11 @@ function ActivityPopover({
 // ── Standing Event Popover ────────────────────────────────────────────────────
 
 function StandingEventPopover({
-  x, y, event, availableDays, organizers, onClose, onUpdate,
+  x, y, event, availableDays, organizers, isAdmin, onClose, onUpdate,
 }: {
   x: number; y: number; event: StandingEvent;
   availableDays: string[]; organizers: string[];
+  isAdmin: boolean;
   onClose: () => void; onUpdate: () => void;
 }) {
   const [form, setForm] = useState({
@@ -644,35 +665,45 @@ function StandingEventPopover({
         </div>
 
         <div className="px-4 py-3 space-y-3">
-          <div>
-            <label className={labelCls}>Location</label>
-            <input value={form.location} onChange={e => set("location", e.target.value)} placeholder="Dining Hall…" className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Organizer</label>
-            <OrganizerSelect value={form.organizer} onChange={v => set("organizer", v)} organizers={organizers} />
-          </div>
+          <ReadOnlyField label="Location" value={form.location} show={!isAdmin} />
+          <ReadOnlyField label="Organizer" value={form.organizer} show={!isAdmin} />
+          {isAdmin && <>
+            <div>
+              <label className={labelCls}>Location</label>
+              <input value={form.location} onChange={e => set("location", e.target.value)} placeholder="Dining Hall…" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Organizer</label>
+              <OrganizerSelect value={form.organizer} onChange={v => set("organizer", v)} organizers={organizers} />
+            </div>
+          </>}
           <div>
             <label className={labelCls}>Days</label>
-            <MiniDayPicker value={form.day} onChange={v => set("day", v)} availableDays={availableDays} />
+            {isAdmin ? <MiniDayPicker value={form.day} onChange={v => set("day", v)} availableDays={availableDays} /> : <p className="text-sm text-gray-700 dark:text-gray-300">{form.day || "—"}</p>}
           </div>
           <div>
             <label className={labelCls}>Start time</label>
-            <TimePicker value={form.start_time} onChange={v => set("start_time", v)} />
+            {isAdmin ? <TimePicker value={form.start_time} onChange={v => set("start_time", v)} /> : <p className="text-sm text-gray-700 dark:text-gray-300">{formatTime(form.start_time)}</p>}
           </div>
           <div>
             <label className={labelCls}>End time</label>
-            <TimePicker value={form.end_time} onChange={v => set("end_time", v)} />
+            {isAdmin ? <TimePicker value={form.end_time} onChange={v => set("end_time", v)} /> : <p className="text-sm text-gray-700 dark:text-gray-300">{formatTime(form.end_time)}</p>}
           </div>
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
         </div>
 
         <div className="px-4 pb-4 flex items-center justify-between">
-          <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline">Delete</button>
-          <button type="submit" disabled={saving}
-            className="px-4 py-1.5 text-sm font-medium bg-amber-500 hover:bg-amber-600 text-white rounded-lg disabled:opacity-50 transition-colors">
-            {saving ? "Saving…" : "Save"}
-          </button>
+          {isAdmin && <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline">Delete</button>}
+          {isAdmin ? (
+            <button type="submit" disabled={saving}
+              className="px-4 py-1.5 text-sm font-medium bg-amber-500 hover:bg-amber-600 text-white rounded-lg disabled:opacity-50 transition-colors">
+              {saving ? "Saving…" : "Save"}
+            </button>
+          ) : (
+            <button type="button" onClick={onClose} className="px-4 py-1.5 text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
+              Close
+            </button>
+          )}
         </div>
       </form>
     </Popover>
@@ -689,6 +720,8 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
   const days = ALL_DAYS.filter(d => availableDays.includes(d));
   const visibleDays = focusDay ? [focusDay] : days;
   const focusDayIndex = focusDay ? days.indexOf(focusDay) : -1;
+
+  const rainbowShadow = "0 0 0 1.5px #d93025, 0 0 0 3px #f5810e, 0 0 0 4.5px #f5c23e, 0 0 0 6px #5dbb46, 0 0 0 7.5px #4b96f3, 0 0 0 9px #7c3aed";
 
   // Auto-scroll to 8 AM on mount
   useEffect(() => {
@@ -854,7 +887,6 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                     const pct = Math.min(track.enrolled / track.capacity, 1);
                     const barColor = pct >= 1 ? "bg-red-500" : pct >= 0.8 ? "bg-yellow-500" : "bg-green-500";
                     const isMine = currentUserName && track.organizer === currentUserName;
-                    const isDimmed = currentUserName && !isMine;
                     return (
                       <div key={`track-${day}-${track.id}`}
                         style={{
@@ -862,9 +894,10 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                           left: `calc(${col * widthPct}% + 2px)`,
                           width: `calc(${widthPct}% - 4px)`,
                           zIndex: 2,
+                          boxShadow: isMine ? rainbowShadow : undefined,
                         }}
-                        className={`rounded-md border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900 px-1.5 py-1 overflow-hidden transition-[filter,opacity] ${isAdmin ? "cursor-pointer hover:brightness-95" : "cursor-default"} ${isMine ? "border-l-4 border-l-amber-400 dark:border-l-amber-400" : ""} ${isDimmed ? "opacity-40" : ""}`}
-                        onClick={e => { e.stopPropagation(); if (isAdmin) setPopover({ kind: "track", x: e.clientX, y: e.clientY, track }); }}>
+                        className={`rounded-md border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900 px-1.5 py-1 overflow-hidden transition-[filter] cursor-pointer hover:brightness-95`}
+                        onClick={e => { e.stopPropagation(); setPopover({ kind: "track", x: e.clientX, y: e.clientY, track }); }}>
                         <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 truncate leading-tight">
                           {track.emoji ? `${track.emoji} ` : ""}{track.name}
                         </p>
@@ -889,12 +922,11 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                     const top = timeToY(timeToMins(ev.start_time));
                     const height = Math.max(24, timeToY(timeToMins(ev.end_time)) - top);
                     const isMine = currentUserName && ev.organizer === currentUserName;
-                    const isDimmed = currentUserName && !isMine;
                     return (
                       <div key={ev.id}
-                        style={{ position: "absolute", top, height, left: 2, right: 2, zIndex: 4 }}
-                        className={`rounded-md border border-amber-300 dark:border-amber-700 bg-amber-100/80 dark:bg-amber-900/50 px-1.5 py-1 overflow-hidden transition-[filter,opacity] ${isAdmin ? "cursor-pointer hover:brightness-95" : "cursor-default"} ${isMine ? "border-l-4 border-l-amber-400 dark:border-l-amber-400" : ""} ${isDimmed ? "opacity-40" : ""}`}
-                        onClick={e => { e.stopPropagation(); if (isAdmin) setPopover({ kind: "standing", x: e.clientX, y: e.clientY, event: ev }); }}>
+                        style={{ position: "absolute", top, height, left: 2, right: 2, zIndex: 4, boxShadow: isMine ? rainbowShadow : undefined }}
+                        className={`rounded-md border border-amber-300 dark:border-amber-700 bg-amber-100/80 dark:bg-amber-900/50 px-1.5 py-1 overflow-hidden transition-[filter] cursor-pointer hover:brightness-95`}
+                        onClick={e => { e.stopPropagation(); setPopover({ kind: "standing", x: e.clientX, y: e.clientY, event: ev }); }}>
                         <p className="text-xs font-semibold text-amber-900 dark:text-amber-100 truncate leading-tight">
                           {ev.emoji ? `${ev.emoji} ` : ""}{ev.name}
                         </p>
@@ -915,7 +947,6 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                     const height = Math.max(24, timeToY(timeToMins(activity.end_time)) - top);
                     const widthPct = 100 / cols;
                     const isMine = currentUserName && activity.organizer === currentUserName;
-                    const isDimmed = currentUserName && !isMine;
                     return (
                       <div key={activity.id}
                         style={{
@@ -923,9 +954,10 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                           left: `calc(${col * widthPct}% + 2px)`,
                           width: `calc(${widthPct}% - 4px)`,
                           zIndex: 3,
+                          boxShadow: isMine ? rainbowShadow : undefined,
                         }}
-                        className={`rounded-md border border-purple-300 dark:border-purple-700 bg-purple-100 dark:bg-purple-900 px-1.5 py-1 overflow-hidden transition-[filter,opacity] ${isAdmin ? "cursor-pointer hover:brightness-95" : "cursor-default"} ${isMine ? "border-l-4 border-l-amber-400 dark:border-l-amber-400" : ""} ${isDimmed ? "opacity-40" : ""}`}
-                        onClick={e => { e.stopPropagation(); if (isAdmin) setPopover({ kind: "activity", x: e.clientX, y: e.clientY, activity }); }}>
+                        className={`rounded-md border border-purple-300 dark:border-purple-700 bg-purple-100 dark:bg-purple-900 px-1.5 py-1 overflow-hidden transition-[filter] cursor-pointer hover:brightness-95`}
+                        onClick={e => { e.stopPropagation(); setPopover({ kind: "activity", x: e.clientX, y: e.clientY, activity }); }}>
                         <p className="text-xs font-semibold text-purple-900 dark:text-purple-100 truncate leading-tight">
                           {activity.emoji ? `${activity.emoji} ` : ""}{activity.name}
                         </p>
@@ -959,6 +991,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
         <TrackPopover
           x={popover.x} y={popover.y} track={popover.track}
           availableDays={availableDays} standingEvents={standingEvents} organizers={organizers}
+          isAdmin={isAdmin}
           onClose={() => setPopover(null)} onUpdate={onUpdate} onOpenRoster={onOpenRoster}
         />
       )}
@@ -966,6 +999,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
         <ActivityPopover
           x={popover.x} y={popover.y} activity={popover.activity}
           availableDays={availableDays} series={series} standingEvents={standingEvents} organizers={organizers}
+          isAdmin={isAdmin}
           onClose={() => setPopover(null)} onUpdate={onUpdate} onOpenRoster={onOpenRoster}
         />
       )}
@@ -973,6 +1007,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
         <StandingEventPopover
           x={popover.x} y={popover.y} event={popover.event}
           availableDays={availableDays} organizers={organizers}
+          isAdmin={isAdmin}
           onClose={() => setPopover(null)} onUpdate={onUpdate}
         />
       )}

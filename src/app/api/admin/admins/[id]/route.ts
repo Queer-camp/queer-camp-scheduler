@@ -3,6 +3,42 @@ import { createAdminClient } from "@/lib/supabase";
 import { requireAdmin, requireAdminRole } from "@/lib/admin-auth";
 import { sendAdminRemoved } from "@/lib/email";
 
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await requireAdminRole(req);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  const { email } = await req.json();
+  const trimmedEmail = email?.trim().toLowerCase() || null;
+
+  const supabase = createAdminClient();
+
+  if (trimmedEmail) {
+    const { data: existing } = await supabase
+      .from("admin_users")
+      .select("id")
+      .eq("email", trimmedEmail)
+      .neq("id", id)
+      .single();
+    if (existing) {
+      return NextResponse.json({ error: "That email is already used by another admin." }, { status: 409 });
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("admin_users")
+    .update({ email: trimmedEmail })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error || !data) return NextResponse.json({ error: error?.message ?? "Failed to update." }, { status: 500 });
+  return NextResponse.json(data);
+}
+
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -29,14 +65,16 @@ export async function DELETE(
   const { error } = await supabase.from("admin_users").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  try {
-    await sendAdminRemoved({
-      to: target.email,
-      name: target.name ?? target.email,
-      removedBy: session.email,
-    });
-  } catch (err) {
-    console.error("Failed to send removal email:", err);
+  if (target.email) {
+    try {
+      await sendAdminRemoved({
+        to: target.email,
+        name: target.name ?? target.email,
+        removedBy: session.email,
+      });
+    } catch (err) {
+      console.error("Failed to send removal email:", err);
+    }
   }
 
   return new NextResponse(null, { status: 204 });

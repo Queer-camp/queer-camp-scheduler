@@ -30,37 +30,44 @@ export async function POST(req: NextRequest) {
   }
 
   const { name, email, role } = await req.json();
-  if (!name?.trim() || !email?.trim()) {
-    return NextResponse.json({ error: "Name and email are required." }, { status: 400 });
+  if (!name?.trim()) {
+    return NextResponse.json({ error: "Name is required." }, { status: 400 });
   }
   const resolvedRole = role === "leader" ? "leader" : "admin";
+  const trimmedEmail = email?.trim().toLowerCase() || null;
 
   const supabase = createAdminClient();
 
-  // Check if already an admin
-  const { data: existing } = await supabase
-    .from("admin_users")
-    .select("id")
-    .eq("email", email.trim().toLowerCase())
-    .single();
+  // Check if already an admin (only if email provided)
+  if (trimmedEmail) {
+    const { data: existing } = await supabase
+      .from("admin_users")
+      .select("id")
+      .eq("email", trimmedEmail)
+      .single();
 
-  if (existing) {
-    return NextResponse.json({ error: "An admin with that email already exists." }, { status: 409 });
+    if (existing) {
+      return NextResponse.json({ error: "An admin with that email already exists." }, { status: 409 });
+    }
   }
 
-  // Create admin record with invite token (48h expiry)
-  const inviteToken = crypto.randomBytes(32).toString("hex");
-  const expires = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+  const insertData: Record<string, unknown> = {
+    name: name.trim(),
+    role: resolvedRole,
+  };
+
+  if (trimmedEmail) {
+    // Create invite token (48h expiry)
+    const inviteToken = crypto.randomBytes(32).toString("hex");
+    const expires = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+    insertData.email = trimmedEmail;
+    insertData.login_token = inviteToken;
+    insertData.login_token_expires_at = expires;
+  }
 
   const { data: newAdmin, error: insertErr } = await supabase
     .from("admin_users")
-    .insert({
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      role: resolvedRole,
-      login_token: inviteToken,
-      login_token_expires_at: expires,
-    })
+    .insert(insertData)
     .select()
     .single();
 
@@ -68,18 +75,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: insertErr?.message ?? "Failed to create admin." }, { status: 500 });
   }
 
-  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/admin/verify-token?token=${inviteToken}`;
-
-  try {
-    await sendAdminInvite({
-      to: email.trim().toLowerCase(),
-      name: name.trim(),
-      inviteUrl,
-      invitedBy: session.email,
-      role: resolvedRole,
-    });
-  } catch (err) {
-    console.error("Failed to send invite email:", err);
+  if (trimmedEmail) {
+    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/admin/verify-token?token=${insertData.login_token}`;
+    try {
+      await sendAdminInvite({
+        to: trimmedEmail,
+        name: name.trim(),
+        inviteUrl,
+        invitedBy: session.email,
+        role: resolvedRole,
+      });
+    } catch (err) {
+      console.error("Failed to send invite email:", err);
+    }
   }
 
   return NextResponse.json(newAdmin, { status: 201 });

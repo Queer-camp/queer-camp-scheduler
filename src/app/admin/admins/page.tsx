@@ -6,7 +6,7 @@ import { useAdminRole } from "@/components/admin/AdminRoleContext";
 type Admin = {
   id: string;
   name: string | null;
-  email: string;
+  email: string | null;
   role: string;
   created_at: string;
 };
@@ -27,6 +27,11 @@ export default function AdminsPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+  // Per-row state for adding email or sending invite
+  const [addEmailId, setAddEmailId] = useState<string | null>(null);
+  const [addEmailValue, setAddEmailValue] = useState("");
+  const [addEmailSaving, setAddEmailSaving] = useState(false);
+  const [sendingInviteId, setSendingInviteId] = useState<string | null>(null);
 
   async function load() {
     const [adminsRes, meRes] = await Promise.all([
@@ -46,12 +51,13 @@ export default function AdminsPage() {
     const res = await fetch("/api/admin/admins", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: form.name, email: form.email, role: form.role }),
+      body: JSON.stringify({ name: form.name, email: form.email || null, role: form.role }),
     });
     if (res.ok) {
+      const created = await res.json();
       setForm(EMPTY_FORM);
       setShowForm(false);
-      setSuccessMsg(`Invite sent to ${form.email} as ${form.role}.`);
+      setSuccessMsg(created.email ? `Invite sent to ${created.email} as ${form.role}.` : `${form.name} added as ${form.role}. Add their email later to send an invite.`);
       await load();
     } else {
       const d = await res.json();
@@ -74,7 +80,41 @@ export default function AdminsPage() {
     await load();
   }
 
+  async function saveEmail(id: string) {
+    setAddEmailSaving(true); setError(null);
+    const res = await fetch(`/api/admin/admins/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: addEmailValue }),
+    });
+    if (res.ok) {
+      // Send invite now that we have an email
+      const inviteRes = await fetch(`/api/admin/admins/${id}/send-invite`, { method: "POST" });
+      setAddEmailId(null);
+      setAddEmailValue("");
+      setSuccessMsg(inviteRes.ok ? "Email saved and invite sent." : "Email saved, but invite email failed to send.");
+      await load();
+    } else {
+      const d = await res.json();
+      setError(d.error ?? "Failed to save email.");
+    }
+    setAddEmailSaving(false);
+  }
+
+  async function sendInvite(id: string) {
+    setSendingInviteId(id); setError(null);
+    const res = await fetch(`/api/admin/admins/${id}/send-invite`, { method: "POST" });
+    if (res.ok) {
+      setSuccessMsg("Invite sent.");
+    } else {
+      const d = await res.json();
+      setError(d.error ?? "Failed to send invite.");
+    }
+    setSendingInviteId(null);
+  }
+
   const inputCls = "w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500";
+  const inlineCls = "border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500";
 
   return (
     <div>
@@ -100,15 +140,15 @@ export default function AdminsPage() {
 
       {isAdmin && showForm && (
         <form onSubmit={handleInvite} className="mb-8 p-6 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
-          <h2 className="font-semibold">Invite a new member</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">They'll receive an email with a link to accept the invitation and log in.</p>
+          <h2 className="font-semibold">Add a new member</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Email is optional — you can add it later and send the invite when ready.</p>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
             <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={inputCls} placeholder="Jordan Smith" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
-            <input type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className={inputCls} placeholder="jordan@example.com" />
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
+            <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className={inputCls} placeholder="jordan@example.com" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Role</label>
@@ -129,7 +169,7 @@ export default function AdminsPage() {
             </div>
           </div>
           <button type="submit" disabled={saving} className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50">
-            {saving ? "Sending invite…" : "Send invite"}
+            {saving ? "Saving…" : form.email ? "Save & send invite" : "Save"}
           </button>
         </form>
       )}
@@ -149,19 +189,44 @@ export default function AdminsPage() {
                   <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
                     {group.map(a => (
                       <div key={a.id} className="px-5 py-4">
-                        <div className="flex items-center justify-between">
-                          <div>
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="min-w-0">
                             <p className="font-medium text-gray-900 dark:text-white">{a.name ?? <span className="text-gray-400 dark:text-gray-500 font-normal">No name</span>}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">{a.email}</p>
+                            {a.email ? (
+                              <p className="text-sm text-gray-500 dark:text-gray-400">{a.email}</p>
+                            ) : (
+                              <p className="text-sm text-gray-400 dark:text-gray-500 italic">No email</p>
+                            )}
                           </div>
-                          <div className="flex items-center gap-3">
-                            {isAdmin && a.id !== me?.id && confirmRemoveId !== a.id && (
-                              <button
-                                onClick={() => { setConfirmRemoveId(a.id); setError(null); setSuccessMsg(null); }}
-                                className="text-sm text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 underline"
-                              >
-                                Remove
-                              </button>
+                          <div className="flex items-center gap-3 shrink-0">
+                            {isAdmin && a.id !== me?.id && (
+                              <>
+                                {!a.email && addEmailId !== a.id && (
+                                  <button
+                                    onClick={() => { setAddEmailId(a.id); setAddEmailValue(""); setError(null); setSuccessMsg(null); }}
+                                    className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline"
+                                  >
+                                    Add email
+                                  </button>
+                                )}
+                                {a.email && (
+                                  <button
+                                    onClick={() => sendInvite(a.id)}
+                                    disabled={sendingInviteId === a.id}
+                                    className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline disabled:opacity-50"
+                                  >
+                                    {sendingInviteId === a.id ? "Sending…" : "Send invite"}
+                                  </button>
+                                )}
+                                {confirmRemoveId !== a.id && (
+                                  <button
+                                    onClick={() => { setConfirmRemoveId(a.id); setError(null); setSuccessMsg(null); }}
+                                    className="text-sm text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 underline"
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </>
                             )}
                             {a.id === me?.id && (
                               <span className="text-xs text-gray-400 dark:text-gray-500">You</span>
@@ -169,10 +234,36 @@ export default function AdminsPage() {
                           </div>
                         </div>
 
+                        {isAdmin && addEmailId === a.id && (
+                          <div className="mt-3 flex items-center gap-2">
+                            <input
+                              type="email"
+                              autoFocus
+                              value={addEmailValue}
+                              onChange={e => setAddEmailValue(e.target.value)}
+                              placeholder="email@example.com"
+                              className={inlineCls + " flex-1"}
+                            />
+                            <button
+                              onClick={() => saveEmail(a.id)}
+                              disabled={addEmailSaving || !addEmailValue.trim()}
+                              className="text-sm bg-black dark:bg-white dark:text-black text-white px-3 py-1.5 rounded font-medium hover:bg-gray-800 disabled:opacity-50"
+                            >
+                              {addEmailSaving ? "Saving…" : "Save & send invite"}
+                            </button>
+                            <button
+                              onClick={() => { setAddEmailId(null); setAddEmailValue(""); }}
+                              className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 underline"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
+
                         {isAdmin && confirmRemoveId === a.id && (
                           <div className="mt-3 flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
                             <p className="text-sm text-red-700 dark:text-red-400 flex-1">
-                              Remove {a.name ?? a.email}? They'll be notified by email.
+                              Remove {a.name ?? a.email}? {a.email ? "They'll be notified by email." : ""}
                             </p>
                             <button
                               onClick={() => removeAdmin(a.id)}

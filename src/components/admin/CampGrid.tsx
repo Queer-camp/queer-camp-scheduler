@@ -28,6 +28,7 @@ interface CampGridProps {
   campId: string;
   isAdmin: boolean;
   organizers: string[];
+  currentUserName?: string | null;
   onUpdate: () => void;
   onOpenRoster: (target: RosterTarget) => void;
 }
@@ -680,7 +681,7 @@ function StandingEventPopover({
 
 // ── Main Grid ─────────────────────────────────────────────────────────────────
 
-export function CampGrid({ tracks, activities, series, standingEvents, availableDays, campStartDate, campId, isAdmin, organizers, onUpdate, onOpenRoster }: CampGridProps) {
+export function CampGrid({ tracks, activities, series, standingEvents, availableDays, campStartDate, campId, isAdmin, organizers, currentUserName, onUpdate, onOpenRoster }: CampGridProps) {
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [focusDay, setFocusDay] = useState<string | null>(null);
@@ -852,6 +853,8 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                     const widthPct = 100 / cols;
                     const pct = Math.min(track.enrolled / track.capacity, 1);
                     const barColor = pct >= 1 ? "bg-red-500" : pct >= 0.8 ? "bg-yellow-500" : "bg-green-500";
+                    const isMine = currentUserName && track.organizer === currentUserName;
+                    const isDimmed = currentUserName && !isMine;
                     return (
                       <div key={`track-${day}-${track.id}`}
                         style={{
@@ -860,7 +863,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                           width: `calc(${widthPct}% - 4px)`,
                           zIndex: 2,
                         }}
-                        className={`rounded-md border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900 px-1.5 py-1 overflow-hidden transition-[filter] ${isAdmin ? "cursor-pointer hover:brightness-95" : "cursor-default"}`}
+                        className={`rounded-md border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900 px-1.5 py-1 overflow-hidden transition-[filter,opacity] ${isAdmin ? "cursor-pointer hover:brightness-95" : "cursor-default"} ${isMine ? "border-l-4 border-l-amber-400 dark:border-l-amber-400" : ""} ${isDimmed ? "opacity-40" : ""}`}
                         onClick={e => { e.stopPropagation(); if (isAdmin) setPopover({ kind: "track", x: e.clientX, y: e.clientY, track }); }}>
                         <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 truncate leading-tight">
                           {track.emoji ? `${track.emoji} ` : ""}{track.name}
@@ -876,6 +879,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                             <span className="text-xs text-blue-700 dark:text-blue-300 opacity-70">{track.enrolled}/{track.capacity}</span>
                           </div>
                         )}
+                        {isMine && <span className="absolute top-1 right-1 text-xs bg-amber-400 text-amber-900 font-semibold px-1 rounded leading-tight">You</span>}
                       </div>
                     );
                   })}
@@ -884,10 +888,12 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                   {standingEvents.filter(ev => parseDays(ev.day).includes(day)).map(ev => {
                     const top = timeToY(timeToMins(ev.start_time));
                     const height = Math.max(24, timeToY(timeToMins(ev.end_time)) - top);
+                    const isMine = currentUserName && ev.organizer === currentUserName;
+                    const isDimmed = currentUserName && !isMine;
                     return (
                       <div key={ev.id}
                         style={{ position: "absolute", top, height, left: 2, right: 2, zIndex: 4 }}
-                        className={`rounded-md border border-amber-300 dark:border-amber-700 bg-amber-100/80 dark:bg-amber-900/50 px-1.5 py-1 overflow-hidden transition-[filter] ${isAdmin ? "cursor-pointer hover:brightness-95" : "cursor-default"}`}
+                        className={`rounded-md border border-amber-300 dark:border-amber-700 bg-amber-100/80 dark:bg-amber-900/50 px-1.5 py-1 overflow-hidden transition-[filter,opacity] ${isAdmin ? "cursor-pointer hover:brightness-95" : "cursor-default"} ${isMine ? "border-l-4 border-l-amber-400 dark:border-l-amber-400" : ""} ${isDimmed ? "opacity-40" : ""}`}
                         onClick={e => { e.stopPropagation(); if (isAdmin) setPopover({ kind: "standing", x: e.clientX, y: e.clientY, event: ev }); }}>
                         <p className="text-xs font-semibold text-amber-900 dark:text-amber-100 truncate leading-tight">
                           {ev.emoji ? `${ev.emoji} ` : ""}{ev.name}
@@ -897,6 +903,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                             {formatTime(ev.start_time)} – {formatTime(ev.end_time)}
                           </p>
                         )}
+                        {isMine && <span className="absolute top-1 right-1 text-xs bg-amber-400 text-amber-900 font-semibold px-1 rounded leading-tight">You</span>}
                       </div>
                     );
                   })}
@@ -907,6 +914,8 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                     const top = timeToY(timeToMins(activity.start_time));
                     const height = Math.max(24, timeToY(timeToMins(activity.end_time)) - top);
                     const widthPct = 100 / cols;
+                    const isMine = currentUserName && activity.organizer === currentUserName;
+                    const isDimmed = currentUserName && !isMine;
                     return (
                       <div key={activity.id}
                         style={{
@@ -915,7 +924,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                           width: `calc(${widthPct}% - 4px)`,
                           zIndex: 3,
                         }}
-                        className={`rounded-md border border-purple-300 dark:border-purple-700 bg-purple-100 dark:bg-purple-900 px-1.5 py-1 overflow-hidden transition-[filter] ${isAdmin ? "cursor-pointer hover:brightness-95" : "cursor-default"}`}
+                        className={`rounded-md border border-purple-300 dark:border-purple-700 bg-purple-100 dark:bg-purple-900 px-1.5 py-1 overflow-hidden transition-[filter,opacity] ${isAdmin ? "cursor-pointer hover:brightness-95" : "cursor-default"} ${isMine ? "border-l-4 border-l-amber-400 dark:border-l-amber-400" : ""} ${isDimmed ? "opacity-40" : ""}`}
                         onClick={e => { e.stopPropagation(); if (isAdmin) setPopover({ kind: "activity", x: e.clientX, y: e.clientY, activity }); }}>
                         <p className="text-xs font-semibold text-purple-900 dark:text-purple-100 truncate leading-tight">
                           {activity.emoji ? `${activity.emoji} ` : ""}{activity.name}
@@ -926,6 +935,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                         {height > 48 && (
                           <p className="text-xs text-purple-700 dark:text-purple-300 leading-tight opacity-60">{activity.enrolled}/{activity.capacity}</p>
                         )}
+                        {isMine && <span className="absolute top-1 right-1 text-xs bg-amber-400 text-amber-900 font-semibold px-1 rounded leading-tight">You</span>}
                       </div>
                     );
                   })}

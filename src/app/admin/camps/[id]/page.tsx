@@ -304,17 +304,19 @@ type TrackWithCount = Track & { enrolled: number };
 type ActivityWithCount = Activity & { enrolled: number };
 
 export default function CampDetailPage() {
-  const { isAdmin } = useAdminRole();
+  const { isAdmin, role } = useAdminRole();
+  const isLeader = role === "leader";
   const { id: campId } = useParams<{ id: string }>();
-  const [tab, setTab] = useState<Tab>("tracks");
+  const [tab, setTab] = useState<Tab>(isLeader ? "grid" : "tracks");
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
   const [campName, setCampName] = useState("");
   const [campStartDate, setCampStartDate] = useState("");
 
-  useKeyboardShortcut("1", () => setTab("tracks"));
-  useKeyboardShortcut("2", () => setTab("activities"));
-  useKeyboardShortcut("3", () => setTab("series"));
+  useKeyboardShortcut("1", () => { if (!isLeader) setTab("tracks"); });
+  useKeyboardShortcut("2", () => { if (!isLeader) setTab("activities"); });
+  useKeyboardShortcut("3", () => { if (!isLeader) setTab("series"); });
   useKeyboardShortcut("4", () => setTab("grid"));
-  useKeyboardShortcut("5", () => setTab("standing"));
+  useKeyboardShortcut("5", () => { if (!isLeader) setTab("standing"); });
   const [availableDays, setAvailableDays] = useState<string[]>(ALL_DAYS);
 
   const [tracks, setTracks] = useState<TrackWithCount[]>([]);
@@ -417,6 +419,9 @@ export default function CampDetailPage() {
     });
     fetch("/api/admin/admins").then(r => r.ok ? r.json() : []).then((users: { name: string | null }[]) => {
       setOrganizers(users.map(u => u.name).filter((n): n is string => Boolean(n)));
+    });
+    fetch("/api/admin/me").then(r => r.ok ? r.json() : null).then(data => {
+      if (data?.name) setCurrentUserName(data.name);
     });
     loadTracks(); loadActivities(); loadSeries(); loadStandingEvents();
   }, [campId]);
@@ -644,11 +649,11 @@ export default function CampDetailPage() {
       </div>
 
       <div className="flex gap-0 border-b border-gray-200 dark:border-gray-700 mb-6">
-        <button className={TAB("tracks")} onClick={() => setTab("tracks")}>Tracks<ShortcutBadge>1</ShortcutBadge></button>
-        <button className={TAB("activities")} onClick={() => setTab("activities")}>Activities<ShortcutBadge>2</ShortcutBadge></button>
-        <button className={TAB("series")} onClick={() => setTab("series")}>Series<ShortcutBadge>3</ShortcutBadge></button>
-        <button className={TAB("grid")} onClick={() => setTab("grid")}>Grid<ShortcutBadge>4</ShortcutBadge></button>
-        <button className={TAB("standing")} onClick={() => setTab("standing")}>Standing<ShortcutBadge>5</ShortcutBadge></button>
+        {!isLeader && <button className={TAB("tracks")} onClick={() => setTab("tracks")}>Tracks<ShortcutBadge>1</ShortcutBadge></button>}
+        {!isLeader && <button className={TAB("activities")} onClick={() => setTab("activities")}>Activities<ShortcutBadge>2</ShortcutBadge></button>}
+        {!isLeader && <button className={TAB("series")} onClick={() => setTab("series")}>Series<ShortcutBadge>3</ShortcutBadge></button>}
+        <button className={TAB("grid")} onClick={() => setTab("grid")}>Grid{!isLeader && <ShortcutBadge>4</ShortcutBadge>}</button>
+        {!isLeader && <button className={TAB("standing")} onClick={() => setTab("standing")}>Standing<ShortcutBadge>5</ShortcutBadge></button>}
       </div>
 
       {error && <p className="mb-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-3 rounded">{error}</p>}
@@ -780,6 +785,7 @@ export default function CampDetailPage() {
           campId={campId}
           isAdmin={isAdmin}
           organizers={organizers}
+          currentUserName={currentUserName}
           onUpdate={() => { loadTracks(); loadActivities(); loadStandingEvents(); }}
           onOpenRoster={openRoster}
         />

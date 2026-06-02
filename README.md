@@ -40,6 +40,7 @@ Open http://localhost:3000.
 - **Leader UX** — leaders default to Grid tab, see only assigned events highlighted with a rainbow outline, can click events for read-only details
 - **Staff drawer** — click any staff row to view/edit info, add timestamped admin-only notes, and see assigned events
 - **Optional email for leaders** — leaders can be created with name only; email and invite sent separately
+- **Multi-organizer** — tracks, activities, and standing events now support multiple organizers via a chip picker; migration 009 converted the `organizer` text column to a `text[]` array on all three tables
 
 ## Workflow
 

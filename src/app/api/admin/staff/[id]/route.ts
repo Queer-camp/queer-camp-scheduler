@@ -29,9 +29,9 @@ export async function GET(
 
   if (name) {
     const [t, a, s] = await Promise.all([
-      supabase.from("tracks").select("id, name, emoji, camp_id, camps(id, name, is_active)").eq("organizer", name),
-      supabase.from("activities").select("id, name, emoji, day, camp_id, camps(id, name, is_active)").eq("organizer", name),
-      supabase.from("standing_events").select("id, name, emoji, day, camp_id, camps(id, name, is_active)").eq("organizer", name),
+      supabase.from("tracks").select("id, name, emoji, camp_id, camps(id, name, is_active)").contains("organizers", [name]),
+      supabase.from("activities").select("id, name, emoji, day, camp_id, camps(id, name, is_active)").contains("organizers", [name]),
+      supabase.from("standing_events").select("id, name, emoji, day, camp_id, camps(id, name, is_active)").contains("organizers", [name]),
     ]);
     tracks = t.data ?? [];
     activities = a.data ?? [];

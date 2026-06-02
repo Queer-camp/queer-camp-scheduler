@@ -32,10 +32,10 @@ function daysInRange(startDate: string, endDate: string): string[] {
   return ALL_DAYS.filter(d => available.has(d));
 }
 
-const EMPTY_TRACK = { name: "", description: "", capacity: "", start_time: "09:00", end_time: "12:00", emoji: "", location: "", organizer: "" };
-const EMPTY_ACTIVITY = { name: "", description: "", capacity: "", day: "", start_time: "09:00", end_time: "12:00", emoji: "", series_id: "", location: "", organizer: "" };
+const EMPTY_TRACK = { name: "", description: "", capacity: "", start_time: "09:00", end_time: "12:00", emoji: "", location: "", organizers: [] as string[] };
+const EMPTY_ACTIVITY = { name: "", description: "", capacity: "", day: "", start_time: "09:00", end_time: "12:00", emoji: "", series_id: "", location: "", organizers: [] as string[] };
 const EMPTY_SERIES = { name: "", description: "" };
-const EMPTY_STANDING = { name: "", emoji: "", day: "", start_time: "12:00", end_time: "13:00", location: "", organizer: "" };
+const EMPTY_STANDING = { name: "", emoji: "", day: "", start_time: "12:00", end_time: "13:00", location: "", organizers: [] as string[] };
 
 type TrackForm = typeof EMPTY_TRACK;
 type ActivityForm = typeof EMPTY_ACTIVITY;
@@ -117,12 +117,45 @@ function DayPicker({ value, onChange, availableDays }: { value: string; onChange
 
 const selectCls = "w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100";
 
-function OrganizerSelect({ value, onChange, organizers }: { value: string; onChange: (v: string) => void; organizers: string[] }) {
+function OrganizerPicker({ value, onChange, organizers }: { value: string[]; onChange: (v: string[]) => void; organizers: string[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    function onDown(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+  function toggle(name: string) {
+    onChange(value.includes(name) ? value.filter(n => n !== name) : [...value, name]);
+  }
   return (
-    <select value={value} onChange={e => onChange(e.target.value)} className={selectCls}>
-      <option value="">— None —</option>
-      {organizers.map(name => <option key={name} value={name}>{name}</option>)}
-    </select>
+    <div ref={ref} className="relative">
+      <div
+        className="min-h-[38px] w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 flex flex-wrap gap-1 cursor-pointer dark:bg-gray-800 focus-within:ring-1 focus-within:ring-purple-400"
+        onClick={() => setOpen(o => !o)}
+      >
+        {value.map(name => (
+          <span key={name} className="flex items-center gap-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-sm font-medium rounded px-2 py-0.5">
+            {name}
+            <button type="button" onClick={e => { e.stopPropagation(); toggle(name); }} className="hover:text-purple-500 leading-none">×</button>
+          </span>
+        ))}
+        {value.length === 0 && <span className="text-sm text-gray-400 dark:text-gray-500 py-0.5">— None —</span>}
+      </div>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          {organizers.map(name => (
+            <button key={name} type="button" onClick={() => toggle(name)}
+              className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 ${value.includes(name) ? "font-medium text-purple-700 dark:text-purple-300" : "text-gray-700 dark:text-gray-300"}`}>
+              <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center text-xs ${value.includes(name) ? "bg-purple-600 border-purple-600 text-white" : "border-gray-400"}`}>
+                {value.includes(name) ? "✓" : ""}
+              </span>
+              {name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -141,7 +174,7 @@ function TrackFormFields({ form, setForm, organizers }: { form: TrackForm; setFo
       </div>
       <div className="col-span-2">
         <label className="block text-sm font-medium mb-1">Organizer <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
-        <OrganizerSelect value={form.organizer} onChange={v => setForm({ ...form, organizer: v })} organizers={organizers} />
+        <OrganizerPicker value={form.organizers} onChange={v => setForm({ ...form, organizers: v })} organizers={organizers} />
       </div>
       <div className="col-span-2">
         <label className="block text-sm font-medium mb-1">Description <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
@@ -185,7 +218,7 @@ function ActivityFormFields({ form, setForm, series, availableDays, organizers }
       </div>
       <div className="col-span-2">
         <label className="block text-sm font-medium mb-1">Organizer <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
-        <OrganizerSelect value={form.organizer} onChange={v => setForm({ ...form, organizer: v })} organizers={organizers} />
+        <OrganizerPicker value={form.organizers} onChange={v => setForm({ ...form, organizers: v })} organizers={organizers} />
       </div>
       <div className="col-span-2">
         <label className="block text-sm font-medium mb-1">Description <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
@@ -265,7 +298,7 @@ function StandingFormFields({ form, setForm, availableDays, organizers }: { form
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">Organizer <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
-        <OrganizerSelect value={form.organizer} onChange={v => setForm({ ...form, organizer: v })} organizers={organizers} />
+        <OrganizerPicker value={form.organizers} onChange={v => setForm({ ...form, organizers: v })} organizers={organizers} />
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">Days</label>
@@ -286,16 +319,16 @@ function StandingFormFields({ form, setForm, availableDays, organizers }: { form
 }
 
 function trackToForm(t: Track): TrackForm {
-  return { name: t.name, description: t.description ?? "", capacity: String(t.capacity), start_time: t.start_time, end_time: t.end_time, emoji: t.emoji ?? "", location: t.location ?? "", organizer: t.organizer ?? "" };
+  return { name: t.name, description: t.description ?? "", capacity: String(t.capacity), start_time: t.start_time, end_time: t.end_time, emoji: t.emoji ?? "", location: t.location ?? "", organizers: t.organizers ?? [] };
 }
 function activityToForm(a: Activity): ActivityForm {
-  return { name: a.name, description: a.description ?? "", capacity: String(a.capacity), day: a.day, start_time: a.start_time, end_time: a.end_time, emoji: a.emoji ?? "", series_id: a.series_id ?? "", location: a.location ?? "", organizer: a.organizer ?? "" };
+  return { name: a.name, description: a.description ?? "", capacity: String(a.capacity), day: a.day, start_time: a.start_time, end_time: a.end_time, emoji: a.emoji ?? "", series_id: a.series_id ?? "", location: a.location ?? "", organizers: a.organizers ?? [] };
 }
 function seriesToForm(s: ActivitySeries): SeriesForm {
   return { name: s.name, description: s.description ?? "" };
 }
 function standingToForm(e: StandingEvent): StandingForm {
-  return { name: e.name, emoji: e.emoji ?? "", day: e.day, start_time: e.start_time, end_time: e.end_time, location: e.location ?? "", organizer: e.organizer ?? "" };
+  return { name: e.name, emoji: e.emoji ?? "", day: e.day, start_time: e.start_time, end_time: e.end_time, location: e.location ?? "", organizers: e.organizers ?? [] };
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -695,7 +728,7 @@ export default function CampDetailPage() {
                     <p className="font-medium">{t.emoji ? `${t.emoji} ` : ""}{t.name}</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">{formatTime(t.start_time)} – {formatTime(t.end_time)}</p>
                     {t.location && <p className="text-sm text-gray-500 dark:text-gray-400">📍 {t.location}</p>}
-                    {t.organizer && <p className="text-sm text-gray-500 dark:text-gray-400">👤 {t.organizer}</p>}
+                    {t.organizers?.length > 0 && <p className="text-sm text-gray-500 dark:text-gray-400">👤 {t.organizers.join(", ")}</p>}
                     {t.description && <p className="text-sm text-gray-500 dark:text-gray-400">{t.description}</p>}
                     <EnrollCount enrolled={t.enrolled} capacity={t.capacity} />
                   </div>
@@ -756,7 +789,7 @@ export default function CampDetailPage() {
                     <p className="font-medium">{a.emoji ? `${a.emoji} ` : ""}{a.name}</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">{formatDays(a.day)} · {formatTime(a.start_time)} – {formatTime(a.end_time)}</p>
                     {a.location && <p className="text-sm text-gray-500 dark:text-gray-400">📍 {a.location}</p>}
-                    {a.organizer && <p className="text-sm text-gray-500 dark:text-gray-400">👤 {a.organizer}</p>}
+                    {a.organizers?.length > 0 && <p className="text-sm text-gray-500 dark:text-gray-400">👤 {a.organizers.join(", ")}</p>}
                     {a.series_id && <p className="text-sm text-gray-500 dark:text-gray-400">Series: {series.find(s => s.id === a.series_id)?.name ?? "—"}</p>}
                     {a.description && <p className="text-sm text-gray-500 dark:text-gray-400">{a.description}</p>}
                     <EnrollCount enrolled={a.enrolled} capacity={a.capacity} />
@@ -1081,7 +1114,7 @@ export default function CampDetailPage() {
                     <p className="font-medium">{ev.emoji ? `${ev.emoji} ` : ""}{ev.name}</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">{formatDays(ev.day)} · {formatTime(ev.start_time)} – {formatTime(ev.end_time)}</p>
                     {ev.location && <p className="text-sm text-gray-500 dark:text-gray-400">📍 {ev.location}</p>}
-                    {ev.organizer && <p className="text-sm text-gray-500 dark:text-gray-400">👤 {ev.organizer}</p>}
+                    {ev.organizers?.length > 0 && <p className="text-sm text-gray-500 dark:text-gray-400">👤 {ev.organizers.join(", ")}</p>}
                   </div>
                   {isAdmin && (
                     <div className="flex gap-3 ml-4 shrink-0">

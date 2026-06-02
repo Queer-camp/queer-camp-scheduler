@@ -222,13 +222,45 @@ function Popover({ x, y, onClose, children }: { x: number; y: number; onClose: (
 const inputCls = "w-full border border-gray-300 dark:border-gray-600 rounded px-2.5 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-400";
 const labelCls = "block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5";
 
-function OrganizerSelect({ value, onChange, organizers }: { value: string; onChange: (v: string) => void; organizers: string[] }) {
+function OrganizerPicker({ value, onChange, organizers }: { value: string[]; onChange: (v: string[]) => void; organizers: string[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    function onDown(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+  function toggle(name: string) {
+    onChange(value.includes(name) ? value.filter(n => n !== name) : [...value, name]);
+  }
   return (
-    <select value={value} onChange={e => onChange(e.target.value)}
-      className="w-full border border-gray-300 dark:border-gray-600 rounded px-2.5 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-400">
-      <option value="">— None —</option>
-      {organizers.map(name => <option key={name} value={name}>{name}</option>)}
-    </select>
+    <div ref={ref} className="relative">
+      <div
+        className="min-h-[34px] w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 flex flex-wrap gap-1 cursor-text dark:bg-gray-800 focus-within:ring-1 focus-within:ring-purple-400"
+        onClick={() => setOpen(o => !o)}
+      >
+        {value.map(name => (
+          <span key={name} className="flex items-center gap-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs font-medium rounded px-1.5 py-0.5">
+            {name}
+            <button type="button" onClick={e => { e.stopPropagation(); toggle(name); }} className="hover:text-purple-500 leading-none">×</button>
+          </span>
+        ))}
+        {value.length === 0 && <span className="text-sm text-gray-400 dark:text-gray-500 py-0.5">— None —</span>}
+      </div>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          {organizers.map(name => (
+            <button key={name} type="button" onClick={() => toggle(name)}
+              className={`w-full text-left px-3 py-1.5 text-sm flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 ${value.includes(name) ? "font-medium text-purple-700 dark:text-purple-300" : "text-gray-700 dark:text-gray-300"}`}>
+              <span className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center text-xs ${value.includes(name) ? "bg-purple-600 border-purple-600 text-white" : "border-gray-400"}`}>
+                {value.includes(name) ? "✓" : ""}
+              </span>
+              {name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -244,7 +276,7 @@ function CreatePopover({
 }) {
   const [form, setForm] = useState({
     itemType: "activity" as "track" | "activity",
-    name: "", emoji: "", location: "", organizer: "", description: "",
+    name: "", emoji: "", location: "", organizers: [] as string[], description: "",
     day: prefillDay ?? "", start_time: prefillStart, end_time: prefillEnd,
     capacity: "15", series_id: "",
   });
@@ -262,8 +294,8 @@ function CreatePopover({
     setSaving(true); setError(null);
     const url = form.itemType === "track" ? "/api/admin/tracks" : "/api/admin/activities";
     const body = form.itemType === "track"
-      ? { camp_id: campId, name: form.name, emoji: form.emoji, location: form.location, organizer: form.organizer, description: form.description, capacity: form.capacity, start_time: form.start_time, end_time: form.end_time }
-      : { camp_id: campId, name: form.name, emoji: form.emoji, location: form.location, organizer: form.organizer, description: form.description, capacity: form.capacity, start_time: form.start_time, end_time: form.end_time, day: form.day, series_id: form.series_id };
+      ? { camp_id: campId, name: form.name, emoji: form.emoji, location: form.location, organizers: form.organizers, description: form.description, capacity: form.capacity, start_time: form.start_time, end_time: form.end_time }
+      : { camp_id: campId, name: form.name, emoji: form.emoji, location: form.location, organizers: form.organizers, description: form.description, capacity: form.capacity, start_time: form.start_time, end_time: form.end_time, day: form.day, series_id: form.series_id };
     const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (res.ok) { onCreated(); onClose(); }
     else { const d = await res.json(); setError(d.error ?? "Failed to create."); }
@@ -304,7 +336,7 @@ function CreatePopover({
 
           <div>
             <label className={labelCls}>Organizer</label>
-            <OrganizerSelect value={form.organizer} onChange={v => set("organizer", v)} organizers={organizers} />
+            <OrganizerPicker value={form.organizers} onChange={v => setForm(f => ({ ...f, organizers: v }))} organizers={organizers} />
           </div>
 
           {form.itemType === "activity" && (
@@ -378,7 +410,7 @@ function TrackPopover({
 }) {
   const [form, setForm] = useState({
     name: track.name, emoji: track.emoji ?? "", location: track.location ?? "",
-    organizer: track.organizer ?? "",
+    organizers: track.organizers ?? [],
     description: track.description ?? "", start_time: track.start_time,
     end_time: track.end_time, capacity: String(track.capacity),
   });
@@ -393,7 +425,7 @@ function TrackPopover({
     setSaving(true); setError(null);
     const res = await fetch(`/api/admin/tracks/${track.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: form.name, emoji: form.emoji, location: form.location, organizer: form.organizer, description: form.description, start_time: form.start_time, end_time: form.end_time, capacity: Number(form.capacity) }),
+      body: JSON.stringify({ name: form.name, emoji: form.emoji, location: form.location, organizers: form.organizers, description: form.description, start_time: form.start_time, end_time: form.end_time, capacity: Number(form.capacity) }),
     });
     if (res.ok) { onUpdate(); onClose(); }
     else { const d = await res.json(); setError(d.error ?? "Failed to save."); }
@@ -430,7 +462,7 @@ function TrackPopover({
 
         <div className="px-4 py-3 space-y-3">
           <ReadOnlyField label="Location" value={form.location} show={!isAdmin} />
-          <ReadOnlyField label="Organizer" value={form.organizer} show={!isAdmin} />
+          <ReadOnlyField label="Organizer" value={form.organizers.join(", ")} show={!isAdmin} />
           {isAdmin && <>
             <div>
               <label className={labelCls}>Location</label>
@@ -438,7 +470,7 @@ function TrackPopover({
             </div>
             <div>
               <label className={labelCls}>Organizer</label>
-              <OrganizerSelect value={form.organizer} onChange={v => set("organizer", v)} organizers={organizers} />
+              <OrganizerPicker value={form.organizers} onChange={v => setForm(f => ({ ...f, organizers: v }))} organizers={organizers} />
             </div>
           </>}
           <div>
@@ -489,7 +521,7 @@ function ActivityPopover({
 }) {
   const [form, setForm] = useState({
     name: activity.name, emoji: activity.emoji ?? "", location: activity.location ?? "",
-    organizer: activity.organizer ?? "",
+    organizers: activity.organizers ?? [],
     description: activity.description ?? "", day: activity.day,
     start_time: activity.start_time, end_time: activity.end_time,
     capacity: String(activity.capacity), series_id: activity.series_id ?? "",
@@ -506,7 +538,7 @@ function ActivityPopover({
     setSaving(true); setError(null);
     const res = await fetch(`/api/admin/activities/${activity.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: form.name, emoji: form.emoji, location: form.location, organizer: form.organizer, description: form.description, day: form.day, start_time: form.start_time, end_time: form.end_time, capacity: Number(form.capacity), series_id: form.series_id || null }),
+      body: JSON.stringify({ name: form.name, emoji: form.emoji, location: form.location, organizers: form.organizers, description: form.description, day: form.day, start_time: form.start_time, end_time: form.end_time, capacity: Number(form.capacity), series_id: form.series_id || null }),
     });
     if (res.ok) { onUpdate(); onClose(); }
     else { const d = await res.json(); setError(d.error ?? "Failed to save."); }
@@ -543,7 +575,7 @@ function ActivityPopover({
 
         <div className="px-4 py-3 space-y-3">
           <ReadOnlyField label="Location" value={form.location} show={!isAdmin} />
-          <ReadOnlyField label="Organizer" value={form.organizer} show={!isAdmin} />
+          <ReadOnlyField label="Organizer" value={form.organizers.join(", ")} show={!isAdmin} />
           {isAdmin && <>
             <div>
               <label className={labelCls}>Location</label>
@@ -551,7 +583,7 @@ function ActivityPopover({
             </div>
             <div>
               <label className={labelCls}>Organizer</label>
-              <OrganizerSelect value={form.organizer} onChange={v => set("organizer", v)} organizers={organizers} />
+              <OrganizerPicker value={form.organizers} onChange={v => setForm(f => ({ ...f, organizers: v }))} organizers={organizers} />
             </div>
           </>}
           <div>
@@ -622,7 +654,7 @@ function StandingEventPopover({
 }) {
   const [form, setForm] = useState({
     name: event.name, emoji: event.emoji ?? "",
-    location: event.location ?? "", organizer: event.organizer ?? "",
+    location: event.location ?? "", organizers: event.organizers ?? [],
     day: event.day, start_time: event.start_time, end_time: event.end_time,
   });
   const [saving, setSaving] = useState(false);
@@ -635,7 +667,7 @@ function StandingEventPopover({
     setSaving(true); setError(null);
     const res = await fetch(`/api/admin/standing-events/${event.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: form.name, emoji: form.emoji || null, location: form.location || null, organizer: form.organizer || null, day: form.day, start_time: form.start_time, end_time: form.end_time }),
+      body: JSON.stringify({ name: form.name, emoji: form.emoji || null, location: form.location || null, organizers: form.organizers, day: form.day, start_time: form.start_time, end_time: form.end_time }),
     });
     if (res.ok) { onUpdate(); onClose(); }
     else { const d = await res.json(); setError(d.error ?? "Failed to save."); }
@@ -666,7 +698,7 @@ function StandingEventPopover({
 
         <div className="px-4 py-3 space-y-3">
           <ReadOnlyField label="Location" value={form.location} show={!isAdmin} />
-          <ReadOnlyField label="Organizer" value={form.organizer} show={!isAdmin} />
+          <ReadOnlyField label="Organizer" value={form.organizers.join(", ")} show={!isAdmin} />
           {isAdmin && <>
             <div>
               <label className={labelCls}>Location</label>
@@ -674,7 +706,7 @@ function StandingEventPopover({
             </div>
             <div>
               <label className={labelCls}>Organizer</label>
-              <OrganizerSelect value={form.organizer} onChange={v => set("organizer", v)} organizers={organizers} />
+              <OrganizerPicker value={form.organizers} onChange={v => setForm(f => ({ ...f, organizers: v }))} organizers={organizers} />
             </div>
           </>}
           <div>
@@ -886,7 +918,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                     const widthPct = 100 / cols;
                     const pct = Math.min(track.enrolled / track.capacity, 1);
                     const barColor = pct >= 1 ? "bg-red-500" : pct >= 0.8 ? "bg-yellow-500" : "bg-green-500";
-                    const isMine = currentUserName && track.organizer === currentUserName;
+                    const isMine = currentUserName && track.organizers?.includes(currentUserName);
                     return (
                       <div key={`track-${day}-${track.id}`}
                         style={{
@@ -921,7 +953,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                   {standingEvents.filter(ev => parseDays(ev.day).includes(day)).map(ev => {
                     const top = timeToY(timeToMins(ev.start_time));
                     const height = Math.max(24, timeToY(timeToMins(ev.end_time)) - top);
-                    const isMine = currentUserName && ev.organizer === currentUserName;
+                    const isMine = currentUserName && ev.organizers?.includes(currentUserName);
                     return (
                       <div key={ev.id}
                         style={{ position: "absolute", top, height, left: 2, right: 2, zIndex: 4, boxShadow: isMine ? rainbowShadow : undefined }}
@@ -946,7 +978,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                     const top = timeToY(timeToMins(activity.start_time));
                     const height = Math.max(24, timeToY(timeToMins(activity.end_time)) - top);
                     const widthPct = 100 / cols;
-                    const isMine = currentUserName && activity.organizer === currentUserName;
+                    const isMine = currentUserName && activity.organizers?.includes(currentUserName);
                     return (
                       <div key={activity.id}
                         style={{

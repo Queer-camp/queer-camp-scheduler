@@ -153,8 +153,8 @@ function ViewMode({
               {currentTrack.location && (
                 <p className="text-sm text-gray-600 print:text-gray-700 mt-0.5">📍 {currentTrack.location}</p>
               )}
-              {currentTrack.organizer && (
-                <p className="text-sm text-gray-600 print:text-gray-700 mt-0.5">👤 {currentTrack.organizer}</p>
+              {currentTrack.organizers?.length > 0 && (
+                <p className="text-sm text-gray-600 print:text-gray-700 mt-0.5">👤 {currentTrack.organizers.join(", ")}</p>
               )}
             </div>
           </div>
@@ -204,8 +204,8 @@ function ViewMode({
                               {ev.location && (
                                 <p className="text-sm text-gray-600 print:text-gray-700 mt-0.5">📍 {ev.location}</p>
                               )}
-                              {ev.organizer && (
-                                <p className="text-sm text-gray-600 print:text-gray-700 mt-0.5">👤 {ev.organizer}</p>
+                              {ev.organizers?.length > 0 && (
+                                <p className="text-sm text-gray-600 print:text-gray-700 mt-0.5">👤 {ev.organizers.join(", ")}</p>
                               )}
                             </div>
                           </div>
@@ -238,8 +238,8 @@ function ViewMode({
                             {a.location && (
                               <p className="text-sm text-gray-600 print:text-gray-700 mt-0.5">📍 {a.location}</p>
                             )}
-                            {a.organizer && (
-                              <p className="text-sm text-gray-600 print:text-gray-700 mt-0.5">👤 {a.organizer}</p>
+                            {a.organizers?.length > 0 && (
+                              <p className="text-sm text-gray-600 print:text-gray-700 mt-0.5">👤 {a.organizers.join(", ")}</p>
                             )}
                             {actSeries && (
                               <p className="text-xs text-gray-500 mt-0.5">{actSeries.name}</p>

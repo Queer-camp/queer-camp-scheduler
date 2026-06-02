@@ -187,10 +187,10 @@ export default function ActivitySlots({
                                   {activity.description}
                                 </p>
                               )}
-                              {(activity.location || activity.organizer) && (
+                              {(activity.location || activity.organizers?.length > 0) && (
                                 <p className="text-xs text-gray-500 mt-0.5 flex flex-wrap gap-x-2">
                                   {activity.location && <span>📍 {activity.location}</span>}
-                                  {activity.organizer && <span>👤 {activity.organizer}</span>}
+                                  {activity.organizers?.length > 0 && <span>👤 {activity.organizers.join(", ")}</span>}
                                 </p>
                               )}
                               <p className="text-xs mt-1 font-semibold">

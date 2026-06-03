@@ -35,6 +35,7 @@ export default function AdminsPage() {
   const [sendingInviteId, setSendingInviteId] = useState<string | null>(null);
   const sendInviteOnCreate = useRef(false);
   const [drawerStaffId, setDrawerStaffId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   async function load() {
     const [adminsRes, meRes] = await Promise.all([
@@ -120,6 +121,22 @@ export default function AdminsPage() {
   const inputCls = "w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500";
   const inlineCls = "border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500";
 
+  function lastName(name: string | null): string {
+    if (!name) return "";
+    const parts = name.trim().split(" ");
+    return parts.length > 1 ? parts[parts.length - 1] : parts[0];
+  }
+  function sortedGroup(group: Admin[]) {
+    return [...group].sort((a, b) => lastName(a.name).localeCompare(lastName(b.name)));
+  }
+  function filteredGroup(group: Admin[]) {
+    const q = search.trim().toLowerCase();
+    if (!q) return sortedGroup(group);
+    return sortedGroup(group).filter(a =>
+      (a.name ?? "").toLowerCase().includes(q) || (a.email ?? "").toLowerCase().includes(q)
+    );
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -195,12 +212,24 @@ export default function AdminsPage() {
         </form>
       )}
 
+      {!loading && (
+        <div className="mb-6">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name or email…"
+            className={inputCls}
+          />
+        </div>
+      )}
+
       {loading ? (
         <p className="text-gray-500 dark:text-gray-400 text-sm">Loading…</p>
       ) : (
         <>
           {(["admin", "leader"] as const).map(role => {
-            const group = admins.filter(a => a.role === role);
+            const group = filteredGroup(admins.filter(a => a.role === role));
             return (
               <div key={role} className="mb-8">
                 <h2 className="text-base font-semibold capitalize mb-3">{role === "admin" ? "Admins" : "Leaders"}</h2>
@@ -208,7 +237,7 @@ export default function AdminsPage() {
                   <p className="text-sm text-gray-400 dark:text-gray-500 italic">No {role === "leader" ? "leaders" : "admins"} yet.</p>
                 ) : (
                   <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
-                    {group.map(a => (
+                    {group.map((a: Admin) => (
                       <div key={a.id} className="px-5 py-4">
                         <div
                           className="flex items-center justify-between gap-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-5 px-5 -my-1 py-1 rounded transition-colors"

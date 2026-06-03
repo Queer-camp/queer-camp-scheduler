@@ -222,22 +222,34 @@ function Popover({ x, y, onClose, children }: { x: number; y: number; onClose: (
 const inputCls = "w-full border border-gray-300 dark:border-gray-600 rounded px-2.5 py-1.5 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-400";
 const labelCls = "block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5";
 
+function sortByLastName(names: string[]): string[] {
+  return [...names].sort((a, b) => {
+    const lastA = a.trim().includes(" ") ? a.trim().split(" ").pop()! : a.trim();
+    const lastB = b.trim().includes(" ") ? b.trim().split(" ").pop()! : b.trim();
+    return lastA.localeCompare(lastB);
+  });
+}
+
 function OrganizerPicker({ value, onChange, organizers }: { value: string[]; onChange: (v: string[]) => void; organizers: string[] }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    function onDown(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    function onDown(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setSearch(""); } }
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, []);
   function toggle(name: string) {
     onChange(value.includes(name) ? value.filter(n => n !== name) : [...value, name]);
   }
+  const sorted = sortByLastName(organizers);
+  const filtered = search.trim() ? sorted.filter(n => n.toLowerCase().includes(search.toLowerCase())) : sorted;
   return (
     <div ref={ref} className="relative">
       <div
         className="min-h-[34px] w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 flex flex-wrap gap-1 cursor-text dark:bg-gray-800 focus-within:ring-1 focus-within:ring-purple-400"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { setOpen(o => !o); setTimeout(() => searchRef.current?.focus(), 0); }}
       >
         {value.map(name => (
           <span key={name} className="flex items-center gap-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs font-medium rounded px-1.5 py-0.5">
@@ -248,16 +260,30 @@ function OrganizerPicker({ value, onChange, organizers }: { value: string[]; onC
         {value.length === 0 && <span className="text-sm text-gray-400 dark:text-gray-500 py-0.5">— None —</span>}
       </div>
       {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-          {organizers.map(name => (
-            <button key={name} type="button" onClick={() => toggle(name)}
-              className={`w-full text-left px-3 py-1.5 text-sm flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 ${value.includes(name) ? "font-medium text-purple-700 dark:text-purple-300" : "text-gray-700 dark:text-gray-300"}`}>
-              <span className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center text-xs ${value.includes(name) ? "bg-purple-600 border-purple-600 text-white" : "border-gray-400"}`}>
-                {value.includes(name) ? "✓" : ""}
-              </span>
-              {name}
-            </button>
-          ))}
+        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+          <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+            <input
+              ref={searchRef}
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onClick={e => e.stopPropagation()}
+              placeholder="Search…"
+              className="w-full px-2 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-400"
+            />
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.map(name => (
+              <button key={name} type="button" onClick={() => toggle(name)}
+                className={`w-full text-left px-3 py-1.5 text-sm flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 ${value.includes(name) ? "font-medium text-purple-700 dark:text-purple-300" : "text-gray-700 dark:text-gray-300"}`}>
+                <span className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center text-xs ${value.includes(name) ? "bg-purple-600 border-purple-600 text-white" : "border-gray-400"}`}>
+                  {value.includes(name) ? "✓" : ""}
+                </span>
+                {name}
+              </button>
+            ))}
+            {filtered.length === 0 && <p className="px-3 py-2 text-sm text-gray-400 dark:text-gray-500">No matches</p>}
+          </div>
         </div>
       )}
     </div>

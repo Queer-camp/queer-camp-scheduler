@@ -41,10 +41,14 @@ Open http://localhost:3000.
 - **Staff drawer** — click any staff row to view/edit info, add timestamped admin-only notes, and see assigned events
 - **Optional email for leaders** — leaders can be created with name only; email and invite sent separately
 - **Multi-organizer** — tracks, activities, and standing events now support multiple organizers via a chip picker; migration 009 converted the `organizer` text column to a `text[]` array on all three tables
+- **Staff page search + sort** — Staff/Admins page now has a search bar (filters by name or email) and lists members sorted alphabetically by last name
+- **Organizer picker search + sort** — organizer dropdown on all event forms is sorted by last name and has an inline search field
 
 ## Workflow
 
 Solo project. Commit and push directly to `main`. Vercel auto-deploys within ~60 seconds. Run any new SQL migration in the Supabase SQL Editor after the related code lands.
+
+**There is no dev server workflow.** We work directly on prod. Don't start `npm run dev` — just edit, commit, and push.
 
 ## Key URLs
 

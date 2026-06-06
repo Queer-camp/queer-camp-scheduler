@@ -4,7 +4,7 @@ import RegistrationForm from "@/components/RegistrationForm";
 import type { ActivityWithSpots, TrackWithSpots } from "@/types/database";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Register — Queer Camp" };
+export const metadata = { title: "Sign Up for Activities — Queer Camp" };
 
 export default async function RegisterPage() {
   const campId = await getActiveCampId();

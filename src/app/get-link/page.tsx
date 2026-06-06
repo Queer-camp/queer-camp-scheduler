@@ -110,7 +110,7 @@ export default function GetLinkPage() {
               <p className="text-sm text-gray-500 text-center">
                 Haven&apos;t registered yet?{" "}
                 <a href="/register" className="underline hover:text-gray-700">
-                  Register here
+                  Sign Up for Activities here
                 </a>
               </p>
             </div>

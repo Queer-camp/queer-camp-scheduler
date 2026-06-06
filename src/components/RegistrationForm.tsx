@@ -441,7 +441,7 @@ export default function RegistrationForm({
           className="w-full text-white py-4 px-6 rounded-full font-bold text-lg shadow-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
           style={{ background: `linear-gradient(to right, #e879a8, #7c3aed, #4b96f3)` }}
         >
-          {submitting ? "Getting you signed up…" : "Sign Up for Activities 🏕️"}
+          {submitting ? "Signing you up for activities…" : "Sign Up for Activities 🏕️"}
         </button>
       </form>
 

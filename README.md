@@ -43,6 +43,9 @@ Open http://localhost:3000.
 - **Multi-organizer** — tracks, activities, and standing events now support multiple organizers via a chip picker; migration 009 converted the `organizer` text column to a `text[]` array on all three tables
 - **Staff page search + sort** — Staff/Admins page now has a search bar (filters by name or email) and lists members sorted alphabetically by last name
 - **Organizer picker search + sort** — organizer dropdown on all event forms is sorted by last name and has an inline search field
+- **"Sign Up for Activities" rename** — registration-facing UI updated from "Register" to "Sign Up for Activities" throughout
+- **Resources tab** — admins can add up to 4 resource links per camp (title, URL, opens in same/new tab); leaders see them read-only; campers see them as pill buttons on their schedule page below their pronouns
+- **Organizer conflict hard-block** — saving any track, activity, or standing event now checks all other events for organizer time+day overlap and blocks the save with a descriptive error if a conflict is found (tracks conflict on any day; activities/standing events only when days intersect)
 
 ## Workflow
 

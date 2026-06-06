@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import type { Track, Activity, ActivitySeries, StandingEvent } from "@/types/database";
 import { formatTime } from "@/lib/format";
-import { findStandingEventConflicts } from "@/lib/conflicts";
+import { findStandingEventConflicts, findOrganizerConflicts, type OrganizerConflict } from "@/lib/conflicts";
 import { ConflictWarning } from "@/components/admin/ConflictWarning";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -31,6 +31,14 @@ interface CampGridProps {
   currentUserName?: string | null;
   onUpdate: () => void;
   onOpenRoster: (target: RosterTarget) => void;
+}
+
+function orgConflictError(conflicts: OrganizerConflict[]): string {
+  const lines = conflicts.map((c) => {
+    const dayStr = c.eventDays ?? "every day";
+    return `${c.organizer} is already leading "${c.eventName}" (${dayStr}, ${formatTime(c.eventStart)}–${formatTime(c.eventEnd)})`;
+  });
+  return lines.join("; ") + ". Change that event's organizer or adjust this event's days/times before saving.";
 }
 
 function ReadOnlyField({ label, value, show }: { label: string; value: string; show: boolean }) {
@@ -294,10 +302,10 @@ function OrganizerPicker({ value, onChange, organizers }: { value: string[]; onC
 
 function CreatePopover({
   x, y, prefillStart, prefillEnd, prefillDay,
-  availableDays, series, standingEvents, campId, organizers, onClose, onCreated,
+  availableDays, series, standingEvents, tracks, activities, campId, organizers, onClose, onCreated,
 }: {
   x: number; y: number; prefillStart: string; prefillEnd: string; prefillDay: string | null;
-  availableDays: string[]; series: ActivitySeries[]; standingEvents: StandingEvent[]; campId: string; organizers: string[];
+  availableDays: string[]; series: ActivitySeries[]; standingEvents: StandingEvent[]; tracks: TrackWithCount[]; activities: ActivityWithCount[]; campId: string; organizers: string[];
   onClose: () => void; onCreated: () => void;
 }) {
   const [form, setForm] = useState({
@@ -317,6 +325,9 @@ function CreatePopover({
     e.preventDefault();
     if (!form.name.trim()) { setError("Name is required."); return; }
     if (form.itemType === "activity" && !form.day) { setError("Select at least one day."); return; }
+    const days = form.itemType === "track" ? null : (form.day ? form.day.split(",").map(d => d.trim()).filter(Boolean) : []);
+    const oc = findOrganizerConflicts(form.organizers, form.start_time, form.end_time, days, undefined, form.itemType, tracks, activities, standingEvents);
+    if (oc.length) { setError(orgConflictError(oc)); return; }
     setSaving(true); setError(null);
     const url = form.itemType === "track" ? "/api/admin/tracks" : "/api/admin/activities";
     const body = form.itemType === "track"
@@ -427,10 +438,10 @@ function CreatePopover({
 // ── Track Detail Popover ──────────────────────────────────────────────────────
 
 function TrackPopover({
-  x, y, track, availableDays, standingEvents, organizers, isAdmin, onClose, onUpdate, onOpenRoster,
+  x, y, track, availableDays, standingEvents, tracks, activities, organizers, isAdmin, onClose, onUpdate, onOpenRoster,
 }: {
   x: number; y: number; track: TrackWithCount;
-  availableDays: string[]; standingEvents: StandingEvent[]; organizers: string[];
+  availableDays: string[]; standingEvents: StandingEvent[]; tracks: TrackWithCount[]; activities: ActivityWithCount[]; organizers: string[];
   isAdmin: boolean;
   onClose: () => void; onUpdate: () => void; onOpenRoster: (t: RosterTarget) => void;
 }) {
@@ -448,6 +459,8 @@ function TrackPopover({
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    const oc = findOrganizerConflicts(form.organizers, form.start_time, form.end_time, null, track.id, "track", tracks, activities, standingEvents);
+    if (oc.length) { setError(orgConflictError(oc)); return; }
     setSaving(true); setError(null);
     const res = await fetch(`/api/admin/tracks/${track.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -538,10 +551,10 @@ function TrackPopover({
 // ── Activity Detail Popover ───────────────────────────────────────────────────
 
 function ActivityPopover({
-  x, y, activity, availableDays, series, standingEvents, organizers, isAdmin, onClose, onUpdate, onOpenRoster,
+  x, y, activity, availableDays, series, standingEvents, tracks, activities, organizers, isAdmin, onClose, onUpdate, onOpenRoster,
 }: {
   x: number; y: number; activity: ActivityWithCount;
-  availableDays: string[]; series: ActivitySeries[]; standingEvents: StandingEvent[]; organizers: string[];
+  availableDays: string[]; series: ActivitySeries[]; standingEvents: StandingEvent[]; tracks: TrackWithCount[]; activities: ActivityWithCount[]; organizers: string[];
   isAdmin: boolean;
   onClose: () => void; onUpdate: () => void; onOpenRoster: (t: RosterTarget) => void;
 }) {
@@ -561,6 +574,8 @@ function ActivityPopover({
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!form.day) { setError("Select at least one day."); return; }
+    const oc = findOrganizerConflicts(form.organizers, form.start_time, form.end_time, form.day.split(",").map(d => d.trim()).filter(Boolean), activity.id, "activity", tracks, activities, standingEvents);
+    if (oc.length) { setError(orgConflictError(oc)); return; }
     setSaving(true); setError(null);
     const res = await fetch(`/api/admin/activities/${activity.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -671,10 +686,10 @@ function ActivityPopover({
 // ── Standing Event Popover ────────────────────────────────────────────────────
 
 function StandingEventPopover({
-  x, y, event, availableDays, organizers, isAdmin, onClose, onUpdate,
+  x, y, event, availableDays, organizers, tracks, activities, standingEvents, isAdmin, onClose, onUpdate,
 }: {
   x: number; y: number; event: StandingEvent;
-  availableDays: string[]; organizers: string[];
+  availableDays: string[]; organizers: string[]; tracks: TrackWithCount[]; activities: ActivityWithCount[]; standingEvents: StandingEvent[];
   isAdmin: boolean;
   onClose: () => void; onUpdate: () => void;
 }) {
@@ -690,6 +705,8 @@ function StandingEventPopover({
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!form.day) { setError("Select at least one day."); return; }
+    const oc = findOrganizerConflicts(form.organizers, form.start_time, form.end_time, form.day.split(",").map(d => d.trim()).filter(Boolean), event.id, "standing", tracks, activities, standingEvents);
+    if (oc.length) { setError(orgConflictError(oc)); return; }
     setSaving(true); setError(null);
     const res = await fetch(`/api/admin/standing-events/${event.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -1041,14 +1058,14 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
         <CreatePopover
           x={popover.x} y={popover.y}
           prefillStart={popover.prefillStart} prefillEnd={popover.prefillEnd} prefillDay={popover.prefillDay}
-          availableDays={availableDays} series={series} standingEvents={standingEvents} campId={campId} organizers={organizers}
+          availableDays={availableDays} series={series} standingEvents={standingEvents} tracks={tracks} activities={activities} campId={campId} organizers={organizers}
           onClose={() => setPopover(null)} onCreated={onUpdate}
         />
       )}
       {popover?.kind === "track" && (
         <TrackPopover
           x={popover.x} y={popover.y} track={popover.track}
-          availableDays={availableDays} standingEvents={standingEvents} organizers={organizers}
+          availableDays={availableDays} standingEvents={standingEvents} tracks={tracks} activities={activities} organizers={organizers}
           isAdmin={isAdmin}
           onClose={() => setPopover(null)} onUpdate={onUpdate} onOpenRoster={onOpenRoster}
         />
@@ -1056,7 +1073,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
       {popover?.kind === "activity" && (
         <ActivityPopover
           x={popover.x} y={popover.y} activity={popover.activity}
-          availableDays={availableDays} series={series} standingEvents={standingEvents} organizers={organizers}
+          availableDays={availableDays} series={series} standingEvents={standingEvents} tracks={tracks} activities={activities} organizers={organizers}
           isAdmin={isAdmin}
           onClose={() => setPopover(null)} onUpdate={onUpdate} onOpenRoster={onOpenRoster}
         />
@@ -1064,7 +1081,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
       {popover?.kind === "standing" && (
         <StandingEventPopover
           x={popover.x} y={popover.y} event={popover.event}
-          availableDays={availableDays} organizers={organizers}
+          availableDays={availableDays} organizers={organizers} tracks={tracks} activities={activities} standingEvents={standingEvents}
           isAdmin={isAdmin}
           onClose={() => setPopover(null)} onUpdate={onUpdate}
         />

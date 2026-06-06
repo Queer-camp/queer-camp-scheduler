@@ -2,17 +2,25 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import type { Track, Activity, ActivitySeries, StandingEvent } from "@/types/database";
+import type { Track, Activity, ActivitySeries, StandingEvent, Resource } from "@/types/database";
 import { formatTime } from "@/lib/format";
 import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut";
 import { ShortcutBadge } from "@/components/admin/ShortcutBadge";
 import { CampGrid } from "@/components/admin/CampGrid";
 import type { RosterTarget as GridRosterTarget } from "@/components/admin/CampGrid";
 import { ConflictWarning } from "@/components/admin/ConflictWarning";
-import { findStandingEventConflicts } from "@/lib/conflicts";
+import { findStandingEventConflicts, findOrganizerConflicts, type OrganizerConflict } from "@/lib/conflicts";
 import { useAdminRole } from "@/components/admin/AdminRoleContext";
 
-type Tab = "tracks" | "activities" | "series" | "grid" | "standing";
+type Tab = "tracks" | "activities" | "series" | "grid" | "standing" | "resources";
+
+function orgConflictError(conflicts: OrganizerConflict[]): string {
+  const lines = conflicts.map((c) => {
+    const dayStr = c.eventDays ?? "every day";
+    return `${c.organizer} is already leading "${c.eventName}" (${dayStr}, ${formatTime(c.eventStart)}–${formatTime(c.eventEnd)})`;
+  });
+  return lines.join("; ") + ". Change that event's organizer or adjust this event's days/times before saving.";
+}
 
 type RosterTarget = { type: "track" | "activity"; id: string; name: string; capacity: number };
 type RosterCamper = { id: string; chosen_first_name: string; chosen_last_name: string; pronouns: string | null; registration_id?: string; current_track_name?: string | null };
@@ -376,6 +384,7 @@ export default function CampDetailPage() {
   useKeyboardShortcut("3", () => { if (!isLeader) setTab("series"); });
   useKeyboardShortcut("4", () => setTab("grid"));
   useKeyboardShortcut("5", () => { if (!isLeader) setTab("standing"); });
+  useKeyboardShortcut("6", () => setTab("resources"));
   const [availableDays, setAvailableDays] = useState<string[]>(ALL_DAYS);
 
   const [tracks, setTracks] = useState<TrackWithCount[]>([]);
@@ -415,6 +424,13 @@ export default function CampDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [organizers, setOrganizers] = useState<string[]>([]);
 
+  const EMPTY_RESOURCE = { title: "", url: "", target: "new_tab" as "same_tab" | "new_tab" };
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [showResourceForm, setShowResourceForm] = useState(false);
+  const [resourceForm, setResourceForm] = useState(EMPTY_RESOURCE);
+  const [editingResource, setEditingResource] = useState<Resource | null>(null);
+  const [editResourceForm, setEditResourceForm] = useState(EMPTY_RESOURCE);
+
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const newMenuRef = useRef<HTMLDivElement>(null);
   const [showImport, setShowImport] = useState(false);
@@ -446,6 +462,10 @@ export default function CampDetailPage() {
   async function loadStandingEvents() {
     const res = await fetch(`/api/admin/standing-events?camp_id=${campId}`);
     if (res.ok) setStandingEvents(await res.json());
+  }
+  async function loadResources() {
+    const res = await fetch(`/api/admin/resources?camp_id=${campId}`);
+    if (res.ok) setResources(await res.json());
   }
 
   async function loadRoster(target: RosterTarget) {
@@ -482,7 +502,7 @@ export default function CampDetailPage() {
     fetch("/api/admin/me").then(r => r.ok ? r.json() : null).then(data => {
       if (data?.name) setCurrentUserName(data.name);
     });
-    loadTracks(); loadActivities(); loadSeries(); loadStandingEvents();
+    loadTracks(); loadActivities(); loadSeries(); loadStandingEvents(); loadResources();
   }, [campId]);
 
   function openRoster(target: RosterTarget) {
@@ -713,6 +733,7 @@ export default function CampDetailPage() {
         {!isLeader && <button className={TAB("series")} onClick={() => setTab("series")}>Series<ShortcutBadge>3</ShortcutBadge></button>}
         <button className={TAB("grid")} onClick={() => setTab("grid")}>Grid{!isLeader && <ShortcutBadge>4</ShortcutBadge>}</button>
         {!isLeader && <button className={TAB("standing")} onClick={() => setTab("standing")}>Standing<ShortcutBadge>5</ShortcutBadge></button>}
+        <button className={TAB("resources")} onClick={() => setTab("resources")}>Resources{!isLeader && <ShortcutBadge>6</ShortcutBadge>}</button>
       </div>
 
       {error && <p className="mb-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-3 rounded">{error}</p>}
@@ -730,7 +751,7 @@ export default function CampDetailPage() {
           </div>
 
           {isAdmin && showTrackForm && (
-            <form className={formCard} onSubmit={e => { e.preventDefault(); handleCreate("/api/admin/tracks", trackForm, () => { setTrackForm(EMPTY_TRACK); setShowTrackForm(false); loadTracks(); }); }}>
+            <form className={formCard} onSubmit={e => { e.preventDefault(); const oc = findOrganizerConflicts(trackForm.organizers, trackForm.start_time, trackForm.end_time, null, undefined, "track", tracks, activities, standingEvents); if (oc.length) { setError(orgConflictError(oc)); return; } handleCreate("/api/admin/tracks", trackForm, () => { setTrackForm(EMPTY_TRACK); setShowTrackForm(false); loadTracks(); }); }}>
               <TrackFormFields form={trackForm} setForm={setTrackForm} organizers={organizers} />
               <ConflictWarning conflicts={findStandingEventConflicts(trackForm.start_time, trackForm.end_time, availableDays, standingEvents)} />
               <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Creating…" : "Create track"}</button>
@@ -740,7 +761,7 @@ export default function CampDetailPage() {
           {tracks.length === 0 ? <p className="text-sm text-gray-500 dark:text-gray-400">No tracks yet.</p> : (
             <div className="space-y-2">
               {tracks.map(t => editingTrack?.id === t.id ? (
-                <form key={t.id} className={formCard} onSubmit={e => { e.preventDefault(); handleSave(`/api/admin/tracks/${t.id}`, editTrackForm, () => { setEditingTrack(null); loadTracks(); }); }}>
+                <form key={t.id} className={formCard} onSubmit={e => { e.preventDefault(); const oc = findOrganizerConflicts(editTrackForm.organizers, editTrackForm.start_time, editTrackForm.end_time, null, t.id, "track", tracks, activities, standingEvents); if (oc.length) { setError(orgConflictError(oc)); return; } handleSave(`/api/admin/tracks/${t.id}`, editTrackForm, () => { setEditingTrack(null); loadTracks(); }); }}>
                   <TrackFormFields form={editTrackForm} setForm={setEditTrackForm} organizers={organizers} />
                   <ConflictWarning conflicts={findStandingEventConflicts(editTrackForm.start_time, editTrackForm.end_time, availableDays, standingEvents)} />
                   <div className="flex gap-2">
@@ -786,6 +807,8 @@ export default function CampDetailPage() {
             <form className={formCard} onSubmit={e => {
               e.preventDefault();
               if (!activityForm.day) { setError("Please select at least one day."); return; }
+              const oc = findOrganizerConflicts(activityForm.organizers, activityForm.start_time, activityForm.end_time, parseDays(activityForm.day), undefined, "activity", tracks, activities, standingEvents);
+              if (oc.length) { setError(orgConflictError(oc)); return; }
               handleCreate("/api/admin/activities", activityForm, () => { setActivityForm(EMPTY_ACTIVITY); setShowActivityForm(false); loadActivities(); });
             }}>
               <ActivityFormFields form={activityForm} setForm={setActivityForm} series={series} availableDays={availableDays} organizers={organizers} />
@@ -800,6 +823,8 @@ export default function CampDetailPage() {
                 <form key={a.id} className={formCard} onSubmit={e => {
                   e.preventDefault();
                   if (!editActivityForm.day) { setError("Please select at least one day."); return; }
+                  const oc = findOrganizerConflicts(editActivityForm.organizers, editActivityForm.start_time, editActivityForm.end_time, parseDays(editActivityForm.day), a.id, "activity", tracks, activities, standingEvents);
+                  if (oc.length) { setError(orgConflictError(oc)); return; }
                   handleSave(`/api/admin/activities/${a.id}`, editActivityForm, () => { setEditingActivity(null); loadActivities(); });
                 }}>
                   <ActivityFormFields form={editActivityForm} setForm={setEditActivityForm} series={series} availableDays={availableDays} organizers={organizers} />
@@ -1113,6 +1138,8 @@ export default function CampDetailPage() {
             <form className={formCard} onSubmit={e => {
               e.preventDefault();
               if (!standingForm.day) { setError("Please select at least one day."); return; }
+              const oc = findOrganizerConflicts(standingForm.organizers, standingForm.start_time, standingForm.end_time, parseDays(standingForm.day), undefined, "standing", tracks, activities, standingEvents);
+              if (oc.length) { setError(orgConflictError(oc)); return; }
               handleCreate("/api/admin/standing-events", standingForm, () => { setStandingForm(EMPTY_STANDING); setShowStandingForm(false); loadStandingEvents(); });
             }}>
               <StandingFormFields form={standingForm} setForm={setStandingForm} availableDays={availableDays} organizers={organizers} />
@@ -1126,6 +1153,8 @@ export default function CampDetailPage() {
                 <form key={ev.id} className={formCard} onSubmit={e => {
                   e.preventDefault();
                   if (!editStandingForm.day) { setError("Please select at least one day."); return; }
+                  const oc = findOrganizerConflicts(editStandingForm.organizers, editStandingForm.start_time, editStandingForm.end_time, parseDays(editStandingForm.day), ev.id, "standing", tracks, activities, standingEvents);
+                  if (oc.length) { setError(orgConflictError(oc)); return; }
                   handleSave(`/api/admin/standing-events/${ev.id}`, editStandingForm, () => { setEditingStanding(null); loadStandingEvents(); });
                 }}>
                   <StandingFormFields form={editStandingForm} setForm={setEditStandingForm} availableDays={availableDays} organizers={organizers} />
@@ -1152,6 +1181,108 @@ export default function CampDetailPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── RESOURCES ── */}
+      {tab === "resources" && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold">Resources</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Up to 4 links that appear as buttons on every camper's schedule page.</p>
+            </div>
+            {isAdmin && resources.length < 4 && (
+              <button onClick={() => { setShowResourceForm(!showResourceForm); setEditingResource(null); }} className={btnPrimary}>
+                {showResourceForm ? "Cancel" : "Add resource"}
+              </button>
+            )}
+          </div>
+
+          {isAdmin && showResourceForm && (
+            <form className={formCard} onSubmit={async e => {
+              e.preventDefault();
+              setSaving(true); setError(null);
+              const res = await fetch("/api/admin/resources", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...resourceForm, camp_id: campId }) });
+              if (res.ok) { setResourceForm(EMPTY_RESOURCE); setShowResourceForm(false); loadResources(); }
+              else { const d = await res.json(); setError(d.error ?? "Failed to create."); }
+              setSaving(false);
+            }}>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium mb-1">Title</label>
+                  <input required value={resourceForm.title} onChange={e => setResourceForm(f => ({ ...f, title: e.target.value }))}
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100" placeholder="Camp Website" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium mb-1">URL</label>
+                  <input required type="url" value={resourceForm.url} onChange={e => setResourceForm(f => ({ ...f, url: e.target.value }))}
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100" placeholder="https://queer.camp" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium mb-1">Opens in</label>
+                  <select value={resourceForm.target} onChange={e => setResourceForm(f => ({ ...f, target: e.target.value as "same_tab" | "new_tab" }))} className={selectCls}>
+                    <option value="new_tab">New tab</option>
+                    <option value="same_tab">Same tab</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" disabled={saving} className={`mt-3 ${btnPrimary}`}>{saving ? "Saving…" : "Add resource"}</button>
+            </form>
+          )}
+
+          {resources.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">No resources yet.</p>}
+
+          <div className="space-y-2">
+            {resources.map(r => editingResource?.id === r.id ? (
+              <form key={r.id} className={formCard} onSubmit={async e => {
+                e.preventDefault();
+                setSaving(true); setError(null);
+                const res = await fetch(`/api/admin/resources/${r.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editResourceForm) });
+                if (res.ok) { setEditingResource(null); loadResources(); }
+                else { const d = await res.json(); setError(d.error ?? "Failed to save."); }
+                setSaving(false);
+              }}>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium mb-1">Title</label>
+                    <input required value={editResourceForm.title} onChange={e => setEditResourceForm(f => ({ ...f, title: e.target.value }))}
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium mb-1">URL</label>
+                    <input required type="url" value={editResourceForm.url} onChange={e => setEditResourceForm(f => ({ ...f, url: e.target.value }))}
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium mb-1">Opens in</label>
+                    <select value={editResourceForm.target} onChange={e => setEditResourceForm(f => ({ ...f, target: e.target.value as "same_tab" | "new_tab" }))} className={selectCls}>
+                      <option value="new_tab">New tab</option>
+                      <option value="same_tab">Same tab</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Saving…" : "Save"}</button>
+                  <button type="button" onClick={() => setEditingResource(null)} className={btnSecondary}>Cancel</button>
+                </div>
+              </form>
+            ) : (
+              <div key={r.id} className={`${card} flex items-center justify-between gap-4`}>
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{r.title}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{r.url}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">{r.target === "new_tab" ? "Opens in new tab" : "Opens in same tab"}</p>
+                </div>
+                {isAdmin && (
+                  <div className="flex gap-3 shrink-0">
+                    <button onClick={() => { setEditingResource(r); setEditResourceForm({ title: r.title, url: r.url, target: r.target }); setShowResourceForm(false); }} className={btnSecondary}>Edit</button>
+                    <button onClick={async () => { if (!confirm(`Delete "${r.title}"?`)) return; await fetch(`/api/admin/resources/${r.id}`, { method: "DELETE" }); loadResources(); }} className={btnDanger}>Delete</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

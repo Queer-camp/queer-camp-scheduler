@@ -93,3 +93,13 @@ export interface ActivityWithSpots extends Activity {
 export interface TrackWithSpots extends Track {
   spots_left: number;
 }
+
+export interface Resource {
+  id: string;
+  camp_id: string;
+  title: string;
+  url: string;
+  target: "same_tab" | "new_tab";
+  position: number;
+  created_at: string;
+}

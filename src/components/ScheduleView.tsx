@@ -7,6 +7,7 @@ import type {
   TrackWithSpots,
   ActivitySeries,
   StandingEvent,
+  Resource,
 } from "@/types/database";
 import ActivitySlots, { buildTimeSlots } from "@/components/ActivitySlots";
 import { formatTime, formatDay } from "@/lib/format";
@@ -30,6 +31,7 @@ interface Props {
   tracks: TrackWithSpots[];
   series: ActivitySeries[];
   standingEvents: StandingEvent[];
+  resources: Resource[];
 }
 
 const RAINBOW = "#d93025, #f5810e, #f5c23e, #5dbb46, #4b96f3, #7c3aed, #e879a8";
@@ -63,6 +65,7 @@ function ViewMode({
   tracks,
   series,
   standingEvents,
+  resources,
   onEdit,
 }: Props & { onEdit: () => void }) {
   const displayName = `${camper.chosen_first_name} ${camper.chosen_last_name}`;
@@ -134,6 +137,24 @@ function ViewMode({
         </h1>
         {camper.pronouns && (
           <p className="text-gray-500 print:text-gray-600 text-sm mt-0.5">{camper.pronouns}</p>
+        )}
+
+        {/* Resource links */}
+        {resources.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-2 mt-3 print:hidden">
+            {resources.map((r) => (
+              <a
+                key={r.id}
+                href={r.url}
+                target={r.target === "new_tab" ? "_blank" : "_self"}
+                rel={r.target === "new_tab" ? "noopener noreferrer" : undefined}
+                className="px-4 py-1.5 rounded-full border text-sm font-medium transition-colors hover:opacity-80"
+                style={{ borderColor: "#7c3aed", color: "#7c3aed" }}
+              >
+                {r.title}
+              </a>
+            ))}
+          </div>
         )}
 
         {/* Track */}

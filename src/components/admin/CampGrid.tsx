@@ -300,6 +300,8 @@ function OrganizerPicker({ value, onChange, organizers }: { value: string[]; onC
 
 // ── Create Popover ────────────────────────────────────────────────────────────
 
+type FreeCamper = { id: string; name: string; pronouns: string | null };
+
 function CreatePopover({
   x, y, prefillStart, prefillEnd, prefillDay,
   availableDays, series, standingEvents, tracks, activities, campId, organizers, onClose, onCreated,
@@ -316,8 +318,29 @@ function CreatePopover({
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [freeOpen, setFreeOpen] = useState(false);
+  const [freeCampers, setFreeCampers] = useState<FreeCamper[] | null>(null);
+  const [freeLoading, setFreeLoading] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
   useEffect(() => { nameRef.current?.focus(); }, []);
+
+  async function loadFree() {
+    if (!prefillDay) return;
+    setFreeLoading(true);
+    const res = await fetch(
+      `/api/admin/camps/${campId}/free-campers?day=${encodeURIComponent(prefillDay)}&start=${prefillStart}&end=${prefillEnd}`
+    );
+    if (res.ok) {
+      const d = await res.json();
+      setFreeCampers(d.freeCampers);
+    }
+    setFreeLoading(false);
+  }
+
+  function toggleFree() {
+    if (!freeOpen && freeCampers === null) loadFree();
+    setFreeOpen(o => !o);
+  }
 
   const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
 
@@ -421,6 +444,37 @@ function CreatePopover({
           )} />
 
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+
+          {prefillDay && (
+            <div className="border-t border-gray-100 dark:border-gray-800 pt-3">
+              <button
+                type="button"
+                onClick={toggleFree}
+                className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 flex items-center gap-1"
+              >
+                <span>{freeOpen ? "▾" : "▸"}</span>
+                Who&apos;s free during this slot?
+              </button>
+              {freeOpen && (
+                <div className="mt-2">
+                  {freeLoading ? (
+                    <p className="text-xs text-gray-400 dark:text-gray-500">Loading…</p>
+                  ) : freeCampers && freeCampers.length === 0 ? (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 italic">Everyone is busy.</p>
+                  ) : freeCampers ? (
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 max-h-32 overflow-y-auto">
+                      {freeCampers.map(c => (
+                        <p key={c.id} className="text-xs text-gray-700 dark:text-gray-300 truncate">
+                          {c.name}
+                          {c.pronouns && <span className="ml-1 opacity-60">({c.pronouns})</span>}
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="px-4 pb-4 flex justify-end gap-2">

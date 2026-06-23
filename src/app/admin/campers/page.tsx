@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { formatDateRange } from "@/lib/format";
 import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut";
@@ -37,6 +37,8 @@ export default function CampersPage() {
   const [loadingCamps, setLoadingCamps] = useState(true);
   const [loadingCampers, setLoadingCampers] = useState(false);
   const [search, setSearch] = useState("");
+  const [totalSlots, setTotalSlots] = useState(0);
+  const [sortBy, setSortBy] = useState<"name" | "fullness">("name");
 
   // New camper form
   const EMPTY_CAMPER_FORM = { chosen_first_name: "", chosen_last_name: "", legal_first_name: "", legal_last_name: "", pronouns: "", email: "" };
@@ -73,13 +75,13 @@ export default function CampersPage() {
       setLoadingCampers(true);
       fetch("/api/admin/campers")
         .then(r => r.json())
-        .then(data => { setCampers(data); setLoadingCampers(false); });
+        .then(d => { setCampers(d.campers); setTotalSlots(0); setLoadingCampers(false); });
     } else {
       if (!selectedCampId) return;
       setLoadingCampers(true);
       fetch(`/api/admin/campers?camp_id=${selectedCampId}`)
         .then(r => r.json())
-        .then(data => { setCampers(data); setLoadingCampers(false); });
+        .then(d => { setCampers(d.campers); setTotalSlots(d.totalSlots ?? 0); setLoadingCampers(false); });
     }
   }, [selectedCampId, showAll]);
 
@@ -95,7 +97,8 @@ export default function CampersPage() {
       setNewForm(EMPTY_CAMPER_FORM);
       setShowNewForm(false);
       const url = `/api/admin/campers?camp_id=${selectedCampId}`;
-      setCampers(await fetch(url).then(r => r.json()));
+      const d = await fetch(url).then(r => r.json());
+      setCampers(d.campers); setTotalSlots(d.totalSlots ?? 0);
     } else {
       const d = await res.json();
       setNewError(d.error ?? "Failed to create camper.");
@@ -147,18 +150,22 @@ export default function CampersPage() {
     exitSelecting();
     // Reload
     const url = showAll ? "/api/admin/campers" : `/api/admin/campers?camp_id=${selectedCampId}`;
-    const data = await fetch(url).then(r => r.json());
-    setCampers(data);
+    const d = await fetch(url).then(r => r.json());
+    setCampers(d.campers); setTotalSlots(d.totalSlots ?? 0);
   }
 
-  const filtered = campers.filter(c => {
+  const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return (
+    const list = campers.filter(c =>
       c.chosen_first_name.toLowerCase().includes(q) ||
       c.chosen_last_name.toLowerCase().includes(q) ||
       c.email.toLowerCase().includes(q)
     );
-  });
+    if (sortBy === "fullness" && totalSlots > 0) {
+      list.sort((a, b) => a.registrations.length - b.registrations.length);
+    }
+    return list;
+  }, [campers, search, sortBy, totalSlots]);
 
   const destinationCamps = camps.filter(c => !c.archived && (showAll || c.id !== selectedCampId));
   const allSelected = filtered.length > 0 && selected.size === filtered.length;
@@ -273,6 +280,24 @@ export default function CampersPage() {
         </span>
       </div>
 
+      {totalSlots > 0 && !loadingCampers && (
+        <div className="flex items-center gap-2 mb-3 text-xs text-gray-500 dark:text-gray-400">
+          <span>Sort:</span>
+          <button
+            onClick={() => setSortBy("name")}
+            className={`px-2 py-0.5 rounded ${sortBy === "name" ? "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white font-medium" : "hover:text-gray-900 dark:hover:text-gray-100"}`}
+          >
+            A–Z
+          </button>
+          <button
+            onClick={() => setSortBy("fullness")}
+            className={`px-2 py-0.5 rounded ${sortBy === "fullness" ? "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white font-medium" : "hover:text-gray-900 dark:hover:text-gray-100"}`}
+          >
+            Fewest first
+          </button>
+        </div>
+      )}
+
       {loadingCamps || loadingCampers ? (
         <p className="text-gray-500 dark:text-gray-400 text-sm">Loading…</p>
       ) : filtered.length === 0 ? (
@@ -324,7 +349,26 @@ export default function CampersPage() {
                   </div>
                   <div className="text-right shrink-0 ml-4">
                     <p className="text-sm text-gray-700 dark:text-gray-300">{c.tracks?.name ?? <span className="text-gray-400 dark:text-gray-500">No track</span>}</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">{c.registrations.length} activit{c.registrations.length === 1 ? "y" : "ies"}</p>
+                    {totalSlots > 0 ? (
+                      <div className="flex items-center gap-2 justify-end mt-1">
+                        <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">{c.registrations.length}/{totalSlots}</span>
+                        <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${Math.min(100, (c.registrations.length / totalSlots) * 100)}%`,
+                              background: c.registrations.length === 0
+                                ? "#ef4444"
+                                : c.registrations.length >= totalSlots
+                                  ? "#22c55e"
+                                  : "#7c3aed",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400 dark:text-gray-500">{c.registrations.length} activit{c.registrations.length === 1 ? "y" : "ies"}</p>
+                    )}
                   </div>
                 </div>
               </div>

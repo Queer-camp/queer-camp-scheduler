@@ -28,7 +28,18 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  let totalSlots = 0;
+  if (campId) {
+    const { data: acts } = await supabase
+      .from("activities")
+      .select("day, start_time, end_time")
+      .eq("camp_id", campId);
+    const slotKeys = new Set((acts ?? []).map(a => `${a.day}|${a.start_time}|${a.end_time}`));
+    totalSlots = slotKeys.size;
+  }
+
+  return NextResponse.json({ campers: data, totalSlots });
 }
 
 export async function POST(req: NextRequest) {

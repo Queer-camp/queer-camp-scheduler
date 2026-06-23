@@ -15,6 +15,7 @@ export type NowData = {
   campStartDate: string;
   campEndDate: string;
   totalCampers: number;
+  allCampers: RosterCamper[];
   tracks: TrackWithCampers[];
   activities: ActivityWithCampers[];
   standingEvents: StandingEvent[];
@@ -129,6 +130,16 @@ export function NowDashboard({ data }: { data: NowData }) {
     return { current, upcoming };
   }, [data, today, nowMins]);
 
+  const freeCampers = useMemo(() => {
+    const busyIds = new Set<string>();
+    for (const it of current) {
+      if (it.kind === "track" || it.kind === "activity") {
+        for (const c of it.item.campers) busyIds.add(c.id);
+      }
+    }
+    return data.allCampers.filter(c => !busyIds.has(c.id));
+  }, [current, data.allCampers]);
+
   const timeStr = now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   const dateStr = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
@@ -216,6 +227,29 @@ export function NowDashboard({ data }: { data: NowData }) {
           </div>
         )}
       </section>
+
+      {/* Free right now */}
+      {inCamp && current.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
+            Free right now ({freeCampers.length})
+          </h2>
+          {freeCampers.length === 0 ? (
+            <p className="text-sm text-gray-400 dark:text-gray-500 italic">Everyone is accounted for.</p>
+          ) : (
+            <div className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1">
+                {[...freeCampers].sort((a, b) => a.name.localeCompare(b.name)).map(c => (
+                  <div key={c.id} className="text-sm text-gray-800 dark:text-gray-200">
+                    {c.name}
+                    {c.pronouns && <span className="ml-1 text-xs text-gray-400 dark:text-gray-500">({c.pronouns})</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       <p className="mt-10 text-xs text-gray-400 dark:text-gray-500">
         Auto-refreshes every 5 minutes when tab is visible

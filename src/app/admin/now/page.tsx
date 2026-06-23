@@ -57,11 +57,18 @@ export default async function NowPage() {
     }
   }
 
+  const allCamperList: RosterCamper[] = (campers ?? []).map(c => ({
+    id: c.id,
+    name: `${c.chosen_first_name} ${c.chosen_last_name}`,
+    pronouns: c.pronouns,
+  }));
+
   const data: NowData = {
     campName: camp.name,
     campStartDate: camp.start_date,
     campEndDate: camp.end_date,
     totalCampers: campers?.length ?? 0,
+    allCampers: allCamperList,
     tracks: (tracks ?? []).map(t => ({ ...t, campers: trackRosters[t.id] ?? [] })),
     activities: (activities ?? []).map(a => ({ ...a, campers: activityRosters[a.id] ?? [] })),
     standingEvents: standingEvents ?? [],

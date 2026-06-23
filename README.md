@@ -34,6 +34,12 @@ Open http://localhost:3000.
 
 ## Recent changes
 
+- **Leader roster access** — leaders can open the "Roster" button in the grid popover for any track or activity where they are listed as an organizer; read-only view, no add/move/remove controls; non-assigned events return 403
+- **Camper print layout** — hitting Print (or Cmd+P) on a camper's schedule page now renders a compact table (Time · Event · Location grouped by day) instead of the full card layout; fits a typical week on one page
+- **Schedule fullness indicator** — campers list shows a color-coded progress bar (N/total slots) per camper when a single camp is selected; red = empty, purple = partial, green = full; sort toggle: A–Z or Fewest first
+- **Free right now** — Now page has a new "Free right now (N)" section listing campers not in any currently-running track or activity; only shown when something is actively happening
+- **Who's free in the grid** — clicking an empty area to create an activity now has a collapsible "Who's free during this slot?" section showing campers with no conflicting track or activity at that time
+
 - **Responsive nav** — hamburger menu on mobile; desktop nav unchanged; menu closes on navigation
 - **Activity day ordering** — camper activity selection now always shows days Monday → Sunday
 - **Grid day view** — click any day header in the admin grid to drill into a single-day full-width view with ← → pagination and "All days" to return

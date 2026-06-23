@@ -130,7 +130,7 @@ function ViewMode({
 
         {/* Header */}
         <p className="text-sm text-gray-500 print:text-black mb-1">{campName}</p>
-        <h1 className="text-3xl font-extrabold tracking-tight print:text-black mb-0.5"
+        <h1 className="text-3xl print:text-xl font-extrabold tracking-tight print:text-black mb-0.5"
           style={{ background: GRADIENT, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}
         >
           {displayName}&apos;s Schedule
@@ -159,7 +159,7 @@ function ViewMode({
 
         {/* Track */}
         {currentTrack && (
-          <div className="mt-6 bg-white print:bg-white rounded-xl border border-gray-200 print:border-gray-300 border-l-4 border-l-purple-500 overflow-hidden">
+          <div className="mt-6 print:hidden bg-white rounded-xl border border-gray-200 border-l-4 border-l-purple-500 overflow-hidden">
             <div className="p-4">
               <p className="text-xs font-bold text-purple-600 print:text-gray-500 uppercase tracking-wide mb-1">
                 Morning Track
@@ -190,7 +190,7 @@ function ViewMode({
             </button>
           </div>
         ) : (
-          <div className="mt-8 space-y-6">
+          <div className="mt-8 space-y-6 print:hidden">
             {byDay.map(([day, items]) => (
               <div key={day}>
                 <h2
@@ -275,6 +275,65 @@ function ViewMode({
             ))}
           </div>
         )}
+
+        {/* Print-only table */}
+        <div className="hidden print:block mt-4">
+          {currentTrack && (
+            <p className="text-xs text-gray-700 mb-3">
+              <strong>Morning Track:</strong>{" "}
+              {currentTrack.emoji ? `${currentTrack.emoji} ` : ""}
+              {currentTrack.name} · {formatTime(currentTrack.start_time)}–{formatTime(currentTrack.end_time)}
+              {currentTrack.location ? ` · ${currentTrack.location}` : ""}
+              {currentTrack.organizers?.length > 0 ? ` · ${currentTrack.organizers.join(", ")}` : ""}
+            </p>
+          )}
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="border-b-2 border-gray-400">
+                <th className="text-left py-1 pr-4 font-bold w-36">Time</th>
+                <th className="text-left py-1 pr-4 font-bold">Event</th>
+                <th className="text-left py-1 font-bold">Location</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byDay.flatMap(([day, items]) => [
+                <tr key={`hd-${day}`}>
+                  <td colSpan={3} className="pt-3 pb-1 font-bold text-xs uppercase tracking-wide text-gray-600 border-b border-gray-300">
+                    {formatDay(day)}
+                  </td>
+                </tr>,
+                ...items.map((item) => {
+                  if (item.kind === "standing") {
+                    const ev = item.event;
+                    return (
+                      <tr key={`standing-${ev.id}`} className="border-b border-gray-200">
+                        <td className="py-1 pr-4 text-gray-500 align-top whitespace-nowrap">
+                          {formatTime(ev.start_time)}–{formatTime(ev.end_time)}
+                        </td>
+                        <td className="py-1 pr-4 align-top">
+                          {ev.emoji ? `${ev.emoji} ` : ""}{ev.name}
+                        </td>
+                        <td className="py-1 text-gray-500 align-top">{ev.location || ""}</td>
+                      </tr>
+                    );
+                  }
+                  const a = item.activity;
+                  return (
+                    <tr key={a.id} className="border-b border-gray-200">
+                      <td className="py-1 pr-4 text-gray-500 align-top whitespace-nowrap">
+                        {formatTime(a.start_time)}–{formatTime(a.end_time)}
+                      </td>
+                      <td className="py-1 pr-4 align-top font-medium">
+                        {a.emoji ? `${a.emoji} ` : ""}{a.name}
+                      </td>
+                      <td className="py-1 text-gray-500 align-top">{a.location || ""}</td>
+                    </tr>
+                  );
+                }),
+              ])}
+            </tbody>
+          </table>
+        </div>
 
         {/* Actions — hidden on print */}
         <div className="mt-10 flex gap-3 print:hidden">

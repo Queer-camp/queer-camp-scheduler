@@ -6,23 +6,47 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!await requireAdminRole(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAdmin(req);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
   const supabase = createAdminClient();
 
   const { data: track } = await supabase
     .from("tracks")
-    .select("id, camp_id, capacity")
+    .select("id, camp_id, capacity, organizers")
     .eq("id", id)
     .single();
   if (!track) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const [{ data: enrolled }, { data: allCampers }, { data: allTracks }] = await Promise.all([
-    supabase
-      .from("campers")
-      .select("id, chosen_first_name, chosen_last_name, pronouns")
-      .eq("track_id", id)
-      .order("chosen_last_name"),
+  const isLeader = session.role === "leader";
+
+  if (isLeader) {
+    const { data: leader } = await supabase
+      .from("admin_users")
+      .select("name")
+      .eq("id", session.adminId)
+      .single();
+    if (!leader?.name || !((track.organizers as string[]) ?? []).includes(leader.name)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
+  const { data: enrolled } = await supabase
+    .from("campers")
+    .select("id, chosen_first_name, chosen_last_name, pronouns")
+    .eq("track_id", id)
+    .order("chosen_last_name");
+
+  if (isLeader) {
+    return NextResponse.json({
+      capacity: track.capacity,
+      enrolled: enrolled?.length ?? 0,
+      campers: enrolled ?? [],
+      available: [],
+    });
+  }
+
+  const [{ data: allCampers }, { data: allTracks }] = await Promise.all([
     supabase
       .from("campers")
       .select("id, chosen_first_name, chosen_last_name, pronouns, track_id")

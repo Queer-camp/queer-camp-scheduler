@@ -6,16 +6,30 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!await requireAdminRole(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAdmin(req);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
   const supabase = createAdminClient();
 
   const { data: activity } = await supabase
     .from("activities")
-    .select("id, camp_id, capacity")
+    .select("id, camp_id, capacity, organizers")
     .eq("id", id)
     .single();
   if (!activity) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const isLeader = session.role === "leader";
+
+  if (isLeader) {
+    const { data: leader } = await supabase
+      .from("admin_users")
+      .select("name")
+      .eq("id", session.adminId)
+      .single();
+    if (!leader?.name || !((activity.organizers as string[]) ?? []).includes(leader.name)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
 
   const { data: regs } = await supabase
     .from("registrations")
@@ -30,6 +44,15 @@ export async function GET(
     chosen_last_name: r.campers.chosen_last_name,
     pronouns: r.campers.pronouns,
   }));
+
+  if (isLeader) {
+    return NextResponse.json({
+      capacity: activity.capacity,
+      enrolled: enrolled.length,
+      campers: enrolled,
+      available: [],
+    });
+  }
 
   const enrolledIds = new Set(enrolled.map(c => c.id));
 

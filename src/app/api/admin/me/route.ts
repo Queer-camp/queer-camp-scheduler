@@ -9,11 +9,13 @@ export async function GET(req: NextRequest) {
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("admin_users")
-    .select("id, name, email, role")
+    .select("id, name, email, role, pin_hash")
     .eq("id", session.adminId)
     .single();
 
-  return NextResponse.json(data);
+  if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const { pin_hash, ...rest } = data;
+  return NextResponse.json({ ...rest, hasPin: !!pin_hash });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -36,9 +38,10 @@ export async function PATCH(req: NextRequest) {
     .from("admin_users")
     .update(updates)
     .eq("id", session.adminId)
-    .select("id, name, email, role")
+    .select("id, name, email, role, pin_hash")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+  const { pin_hash, ...rest } = data;
+  return NextResponse.json({ ...rest, hasPin: !!pin_hash });
 }

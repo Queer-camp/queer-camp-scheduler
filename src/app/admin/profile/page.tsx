@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
-type Me = { id: string; name: string | null; email: string; role: string };
+type Me = { id: string; name: string | null; email: string; role: string; hasPin: boolean };
 
 export default function ProfilePage() {
   const [me, setMe] = useState<Me | null>(null);
@@ -83,6 +84,17 @@ export default function ProfilePage() {
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
           <div className={fieldCls + " capitalize"}>{me.role}</div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PIN sign-in</label>
+          <div className={fieldCls}>{me.hasPin ? "PIN is set" : "No PIN set"}</div>
+          <Link
+            href="/admin/set-pin"
+            className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1 inline-block"
+          >
+            {me.hasPin ? "Change your PIN" : "Set a PIN"}
+          </Link>
         </div>
 
         <button

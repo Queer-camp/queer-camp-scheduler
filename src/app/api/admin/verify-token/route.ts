@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const { data: admin } = await supabase
     .from("admin_users")
-    .select("id, email, role, login_token_expires_at")
+    .select("id, email, role, login_token_expires_at, pin_hash")
     .eq("login_token", token)
     .single();
 
@@ -37,7 +37,8 @@ export async function GET(req: NextRequest) {
     role: admin.role,
   });
 
-  const response = NextResponse.redirect(new URL("/admin?welcome=1", req.url));
+  const destination = admin.pin_hash ? "/admin?welcome=1" : "/admin/set-pin?first=1";
+  const response = NextResponse.redirect(new URL(destination, req.url));
   response.cookies.set(COOKIE_NAME, jwt, sessionCookieOptions());
 
   return response;

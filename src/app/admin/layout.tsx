@@ -207,14 +207,19 @@ function WelcomeBanner() {
   if (!visible) return null;
 
   return (
-    <div className="bg-purple-50 dark:bg-purple-900/20 border-b border-purple-200 dark:border-purple-800">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-start sm:items-center justify-between gap-3">
-        <p className="text-sm text-purple-900 dark:text-purple-200">
-          <strong>You&apos;re in!</strong> Bookmark this page (or add it to your phone&apos;s home screen) so you can get back in without checking your email again.
-        </p>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 mt-4">
+      <div className="animate-banner-in flex items-start sm:items-center justify-between gap-3 rounded-2xl border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 shadow-sm px-4 py-3 sm:px-5 sm:py-4">
+        <div className="text-sm text-yellow-900 dark:text-yellow-200">
+          <p>
+            <strong>You&apos;re in!</strong>{" "}Bookmark this page (or add it to your phone&apos;s home screen) so you can get back in without checking your email again.
+          </p>
+          <p className="mt-1 text-yellow-800/80 dark:text-yellow-300/80">
+            Tip: view this in your phone&apos;s browser (Safari or Chrome), not inside your email app — bookmarks made there won&apos;t work.
+          </p>
+        </div>
         <button
           onClick={() => setVisible(false)}
-          className="shrink-0 text-purple-500 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-200"
+          className="shrink-0 text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-200"
           aria-label="Dismiss"
         >
           ✕

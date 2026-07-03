@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useKeyboardShortcut, useSequenceShortcuts } from "@/hooks/useKeyboardShortcut";
 import { KeyboardShortcutsModal } from "@/components/admin/KeyboardShortcutsModal";
 import { ThemeProvider, useTheme } from "@/components/admin/ThemeProvider";
@@ -190,6 +190,40 @@ function AdminNav() {
   );
 }
 
+function WelcomeBanner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("welcome") === "1") {
+      setVisible(true);
+      // Strip the param so a bookmark taken from this page doesn't carry it forever
+      router.replace(pathname);
+    }
+  }, [searchParams, router, pathname]);
+
+  if (!visible) return null;
+
+  return (
+    <div className="bg-purple-50 dark:bg-purple-900/20 border-b border-purple-200 dark:border-purple-800">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-start sm:items-center justify-between gap-3">
+        <p className="text-sm text-purple-900 dark:text-purple-200">
+          <strong>You&apos;re in!</strong> Bookmark this page (or add it to your phone&apos;s home screen) so you can get back in without checking your email again.
+        </p>
+        <button
+          onClick={() => setVisible(false)}
+          className="shrink-0 text-purple-500 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-200"
+          aria-label="Dismiss"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const RAINBOW = "#d93025, #f5810e, #f5c23e, #5dbb46, #4b96f3, #7c3aed, #e879a8";
   const [role, setRole] = useState<string | null>(null);
@@ -206,6 +240,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 text-gray-900 dark:text-gray-100">
           <div className="h-2" style={{ background: `linear-gradient(to right, ${RAINBOW})` }} />
           <AdminNav />
+          <Suspense fallback={null}>
+            <WelcomeBanner />
+          </Suspense>
           <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">{children}</main>
         </div>
       </AdminRoleContext.Provider>

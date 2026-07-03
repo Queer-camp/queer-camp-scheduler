@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase";
-import { createSessionToken, COOKIE_NAME } from "@/lib/admin-session";
+import { createSessionToken, sessionCookieOptions, COOKIE_NAME } from "@/lib/admin-session";
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
@@ -37,14 +37,8 @@ export async function GET(req: NextRequest) {
     role: admin.role,
   });
 
-  const response = NextResponse.redirect(new URL("/admin", req.url));
-  response.cookies.set(COOKIE_NAME, jwt, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
-    path: "/",
-  });
+  const response = NextResponse.redirect(new URL("/admin?welcome=1", req.url));
+  response.cookies.set(COOKIE_NAME, jwt, sessionCookieOptions());
 
   return response;
 }

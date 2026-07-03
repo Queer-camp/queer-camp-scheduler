@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifySessionToken, COOKIE_NAME } from "@/lib/admin-session";
+import {
+  verifySessionToken,
+  createSessionToken,
+  sessionCookieOptions,
+  COOKIE_NAME,
+} from "@/lib/admin-session";
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -16,8 +21,17 @@ export async function proxy(req: NextRequest) {
   }
 
   try {
-    await verifySessionToken(token);
-    return NextResponse.next();
+    const session = await verifySessionToken(token);
+    // Rolling session: re-issue the cookie with a fresh 30-day expiry on every
+    // visit, so anyone who opens the app at least once a month stays logged in.
+    const response = NextResponse.next();
+    const refreshed = await createSessionToken({
+      adminId: session.adminId,
+      email: session.email,
+      role: session.role,
+    });
+    response.cookies.set(COOKIE_NAME, refreshed, sessionCookieOptions());
+    return response;
   } catch {
     const response = NextResponse.redirect(new URL("/admin/login", req.url));
     response.cookies.delete(COOKIE_NAME);

@@ -659,7 +659,7 @@ export default function CampDetailPage() {
     setImporting(false);
   }
 
-  const TAB = (t: Tab) => `px-4 py-2 text-sm font-medium border-b-2 ${tab === t ? "border-black dark:border-white text-gray-900 dark:text-white" : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"}`;
+  const TAB = (t: Tab) => `shrink-0 whitespace-nowrap px-4 py-2 text-sm font-medium border-b-2 ${tab === t ? "border-black dark:border-white text-gray-900 dark:text-white" : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"}`;
   const btnPrimary = "bg-black text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50";
   const btnSecondary = "text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline";
   const btnDanger = "text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline";
@@ -727,7 +727,7 @@ export default function CampDetailPage() {
         </div>}
       </div>
 
-      <div className="flex gap-0 border-b border-gray-200 dark:border-gray-700 mb-6">
+      <div className="flex gap-0 border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
         {!isLeader && <button className={TAB("tracks")} onClick={() => setTab("tracks")}>Tracks<ShortcutBadge>1</ShortcutBadge></button>}
         {!isLeader && <button className={TAB("activities")} onClick={() => setTab("activities")}>Activities<ShortcutBadge>2</ShortcutBadge></button>}
         {!isLeader && <button className={TAB("series")} onClick={() => setTab("series")}>Series<ShortcutBadge>3</ShortcutBadge></button>}

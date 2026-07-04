@@ -18,18 +18,8 @@ export async function GET(
     .single();
   if (!activity) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Leaders can view the roster for any activity, not just ones they organize.
   const isLeader = session.role === "leader";
-
-  if (isLeader) {
-    const { data: leader } = await supabase
-      .from("admin_users")
-      .select("name")
-      .eq("id", session.adminId)
-      .single();
-    if (!leader?.name || !((activity.organizers as string[]) ?? []).includes(leader.name)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  }
 
   const { data: regs } = await supabase
     .from("registrations")

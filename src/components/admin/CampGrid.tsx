@@ -613,14 +613,13 @@ function CreatePopover({
 // ── Track Detail Popover ──────────────────────────────────────────────────────
 
 function TrackPopover({
-  x, y, track, availableDays, standingEvents, tracks, activities, organizers, isAdmin, currentUserName, onClose, onUpdate, onOpenRoster,
+  x, y, track, availableDays, standingEvents, tracks, activities, organizers, isAdmin, onClose, onUpdate, onOpenRoster,
 }: {
   x: number; y: number; track: TrackWithCount;
   availableDays: string[]; standingEvents: StandingEvent[]; tracks: TrackWithCount[]; activities: ActivityWithCount[]; organizers: string[];
-  isAdmin: boolean; currentUserName?: string | null;
+  isAdmin: boolean;
   onClose: () => void; onUpdate: () => void; onOpenRoster: (t: RosterTarget) => void;
 }) {
-  const canViewRoster = isAdmin || !!(currentUserName && track.organizers?.includes(currentUserName));
   const [form, setForm] = useState({
     name: track.name, emoji: track.emoji ?? "", location: track.location ?? "",
     organizers: track.organizers ?? [],
@@ -710,10 +709,8 @@ function TrackPopover({
 
         <div className="px-4 pb-4 flex items-center justify-between">
           <div className="flex gap-4">
-            {canViewRoster && (
-              <button type="button" onClick={() => { onOpenRoster({ type: "track", id: track.id, name: track.name, capacity: track.capacity }); onClose(); }}
-                className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-medium py-2">Roster</button>
-            )}
+            <button type="button" onClick={() => { onOpenRoster({ type: "track", id: track.id, name: track.name, capacity: track.capacity }); onClose(); }}
+              className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-medium py-2">Roster</button>
             {isAdmin && <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline py-2">Delete</button>}
           </div>
           {isAdmin && <button type="submit" disabled={saving}
@@ -729,14 +726,13 @@ function TrackPopover({
 // ── Activity Detail Popover ───────────────────────────────────────────────────
 
 function ActivityPopover({
-  x, y, activity, availableDays, series, standingEvents, tracks, activities, organizers, isAdmin, currentUserName, onClose, onUpdate, onOpenRoster,
+  x, y, activity, availableDays, series, standingEvents, tracks, activities, organizers, isAdmin, onClose, onUpdate, onOpenRoster,
 }: {
   x: number; y: number; activity: ActivityWithCount;
   availableDays: string[]; series: ActivitySeries[]; standingEvents: StandingEvent[]; tracks: TrackWithCount[]; activities: ActivityWithCount[]; organizers: string[];
-  isAdmin: boolean; currentUserName?: string | null;
+  isAdmin: boolean;
   onClose: () => void; onUpdate: () => void; onOpenRoster: (t: RosterTarget) => void;
 }) {
-  const canViewRoster = isAdmin || !!(currentUserName && activity.organizers?.includes(currentUserName));
   const [form, setForm] = useState({
     name: activity.name, emoji: activity.emoji ?? "", location: activity.location ?? "",
     organizers: activity.organizers ?? [],
@@ -848,10 +844,8 @@ function ActivityPopover({
 
         <div className="px-4 pb-4 flex items-center justify-between">
           <div className="flex gap-4">
-            {canViewRoster && (
-              <button type="button" onClick={() => { onOpenRoster({ type: "activity", id: activity.id, name: activity.name, capacity: activity.capacity }); onClose(); }}
-                className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-medium py-2">Roster</button>
-            )}
+            <button type="button" onClick={() => { onOpenRoster({ type: "activity", id: activity.id, name: activity.name, capacity: activity.capacity }); onClose(); }}
+              className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-medium py-2">Roster</button>
             {isAdmin && <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline py-2">Delete</button>}
           </div>
           {isAdmin && <button type="submit" disabled={saving}
@@ -1358,7 +1352,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
         <TrackPopover
           x={popover.x} y={popover.y} track={popover.track}
           availableDays={availableDays} standingEvents={standingEvents} tracks={tracks} activities={activities} organizers={organizers}
-          isAdmin={isAdmin} currentUserName={currentUserName}
+          isAdmin={isAdmin}
           onClose={() => setPopover(null)} onUpdate={onUpdate} onOpenRoster={onOpenRoster}
         />
       )}
@@ -1366,7 +1360,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
         <ActivityPopover
           x={popover.x} y={popover.y} activity={popover.activity}
           availableDays={availableDays} series={series} standingEvents={standingEvents} tracks={tracks} activities={activities} organizers={organizers}
-          isAdmin={isAdmin} currentUserName={currentUserName}
+          isAdmin={isAdmin}
           onClose={() => setPopover(null)} onUpdate={onUpdate} onOpenRoster={onOpenRoster}
         />
       )}

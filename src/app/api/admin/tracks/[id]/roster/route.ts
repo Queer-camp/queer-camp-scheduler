@@ -18,18 +18,8 @@ export async function GET(
     .single();
   if (!track) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Leaders can view the roster for any track, not just ones they organize.
   const isLeader = session.role === "leader";
-
-  if (isLeader) {
-    const { data: leader } = await supabase
-      .from("admin_users")
-      .select("name")
-      .eq("id", session.adminId)
-      .single();
-    if (!leader?.name || !((track.organizers as string[]) ?? []).includes(leader.name)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  }
 
   const { data: enrolled } = await supabase
     .from("campers")

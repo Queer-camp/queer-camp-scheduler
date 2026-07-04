@@ -34,6 +34,7 @@ interface CampGridProps {
   isAdmin: boolean;
   organizers: string[];
   currentUserName?: string | null;
+  agendaMineOnly?: boolean;
   onUpdate: () => void;
   onOpenRoster: (target: RosterTarget) => void;
 }
@@ -260,6 +261,27 @@ function Popover({ x, y, onClose, children }: { x: number; y: number; onClose: (
     const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  // Lock the page's own scroll while this is open — otherwise a scroll/drag
+  // gesture that starts over the backdrop (or slips past the sheet's own
+  // scroll area) can still scroll the page underneath, which is confusing
+  // and, on mobile, makes the sheet feel like it never fully covers the page.
+  useEffect(() => {
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const prev = { position: body.style.position, top: body.style.top, width: body.style.width, overflow: body.style.overflow };
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+    return () => {
+      body.style.position = prev.position;
+      body.style.top = prev.top;
+      body.style.width = prev.width;
+      body.style.overflow = prev.overflow;
+      window.scrollTo(0, scrollY);
+    };
   }, []);
 
   useEffect(() => {
@@ -946,7 +968,7 @@ function StandingEventPopover({
 
 // ── Main Grid ─────────────────────────────────────────────────────────────────
 
-export function CampGrid({ tracks, activities, series, standingEvents, availableDays, campStartDate, campId, isAdmin, organizers, currentUserName, onUpdate, onOpenRoster }: CampGridProps) {
+export function CampGrid({ tracks, activities, series, standingEvents, availableDays, campStartDate, campId, isAdmin, organizers, currentUserName, agendaMineOnly = false, onUpdate, onOpenRoster }: CampGridProps) {
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [focusDay, setFocusDay] = useState<string | null>(null);
@@ -961,7 +983,6 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
   // instead of the side-by-side columns the desktop grid uses (which shrink
   // overlapping tracks/activities down to unreadable slivers on a phone).
   const [agendaDay, setAgendaDay] = useState<string>(() => defaultAgendaDay(days, campStartDate));
-  const [agendaMineOnly, setAgendaMineOnly] = useState(false);
 
   function agendaItemIsMine(item: AgendaItem): boolean {
     const organizers = item.kind === "track" ? item.track.organizers : item.kind === "activity" ? item.activity.organizers : item.event.organizers;
@@ -978,7 +999,6 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
   }
   const agendaItemsAll = agendaItemsForDay(agendaDay);
   const agendaItems = agendaMineOnly ? agendaItemsAll.filter(agendaItemIsMine) : agendaItemsAll;
-  const hasAnyAssignments = !!(currentUserName && [...tracks, ...activities, ...standingEvents].some(i => i.organizers?.includes(currentUserName)));
 
   // Auto-scroll to 8 AM on mount
   useEffect(() => {
@@ -1058,33 +1078,6 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
             );
           })}
         </div>
-
-        {hasAnyAssignments && (
-          <div className="flex gap-1.5 mb-3">
-            <button
-              type="button"
-              onClick={() => setAgendaMineOnly(false)}
-              className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold border transition-colors ${
-                !agendaMineOnly
-                  ? "bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-black dark:border-white"
-                  : "bg-white text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
-              }`}
-            >
-              All events
-            </button>
-            <button
-              type="button"
-              onClick={() => setAgendaMineOnly(true)}
-              className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold border transition-colors ${
-                agendaMineOnly
-                  ? "bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-black dark:border-white"
-                  : "bg-white text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
-              }`}
-            >
-              My events
-            </button>
-          </div>
-        )}
 
         {agendaItems.length === 0 ? (
           <p className="text-sm text-gray-400 dark:text-gray-500 italic py-6 text-center">

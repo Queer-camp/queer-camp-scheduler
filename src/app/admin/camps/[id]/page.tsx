@@ -378,6 +378,7 @@ export default function CampDetailPage() {
   const [currentUserName, setCurrentUserName] = useState<string | null>(null);
   const [campName, setCampName] = useState("");
   const [campStartDate, setCampStartDate] = useState("");
+  const [agendaMineOnly, setAgendaMineOnly] = useState(false);
 
   useKeyboardShortcut("1", () => { if (!isLeader) setTab("tracks"); });
   useKeyboardShortcut("2", () => { if (!isLeader) setTab("activities"); });
@@ -474,6 +475,8 @@ export default function CampDetailPage() {
     const res = await fetch(`/api/admin/${target.type === "track" ? "tracks" : "activities"}/${target.id}/roster`);
     if (res.ok) {
       setRosterData(await res.json());
+    } else if (res.status === 403) {
+      setRosterError("Didn't load roster — this isn't your event.");
     } else {
       setRosterError("Failed to load roster.");
     }
@@ -684,6 +687,11 @@ export default function CampDetailPage() {
     return parseDays(day).join(", ") || "—";
   }
 
+  const hasAnyAssignments = !!(
+    currentUserName &&
+    [...tracks, ...activities, ...standingEvents].some(item => item.organizers?.includes(currentUserName))
+  );
+
   return (
     <div>
       <div className="mb-6 flex items-start justify-between gap-4">
@@ -727,13 +735,28 @@ export default function CampDetailPage() {
         </div>}
       </div>
 
-      <div className="flex gap-0 border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-        {!isLeader && <button className={TAB("tracks")} onClick={() => setTab("tracks")}>Tracks<ShortcutBadge>1</ShortcutBadge></button>}
-        {!isLeader && <button className={TAB("activities")} onClick={() => setTab("activities")}>Activities<ShortcutBadge>2</ShortcutBadge></button>}
-        {!isLeader && <button className={TAB("series")} onClick={() => setTab("series")}>Series<ShortcutBadge>3</ShortcutBadge></button>}
-        <button className={TAB("grid")} onClick={() => setTab("grid")}>Grid{!isLeader && <ShortcutBadge>4</ShortcutBadge>}</button>
-        {!isLeader && <button className={TAB("standing")} onClick={() => setTab("standing")}>Standing<ShortcutBadge>5</ShortcutBadge></button>}
-        <button className={TAB("resources")} onClick={() => setTab("resources")}>Resources{!isLeader && <ShortcutBadge>6</ShortcutBadge>}</button>
+      <div className="flex items-center justify-between gap-3 border-b border-gray-200 dark:border-gray-700 mb-6">
+        <div className="flex gap-0 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          {!isLeader && <button className={TAB("tracks")} onClick={() => setTab("tracks")}>Tracks<ShortcutBadge>1</ShortcutBadge></button>}
+          {!isLeader && <button className={TAB("activities")} onClick={() => setTab("activities")}>Activities<ShortcutBadge>2</ShortcutBadge></button>}
+          {!isLeader && <button className={TAB("series")} onClick={() => setTab("series")}>Series<ShortcutBadge>3</ShortcutBadge></button>}
+          <button className={TAB("grid")} onClick={() => setTab("grid")}>{isLeader ? "Schedule" : "Grid"}{!isLeader && <ShortcutBadge>4</ShortcutBadge>}</button>
+          {!isLeader && <button className={TAB("standing")} onClick={() => setTab("standing")}>Standing<ShortcutBadge>5</ShortcutBadge></button>}
+          <button className={TAB("resources")} onClick={() => setTab("resources")}>Resources{!isLeader && <ShortcutBadge>6</ShortcutBadge>}</button>
+        </div>
+        {isLeader && tab === "grid" && hasAnyAssignments && (
+          <button
+            type="button"
+            onClick={() => setAgendaMineOnly(v => !v)}
+            className={`sm:hidden shrink-0 mb-2 rounded-lg px-3.5 py-2.5 text-xs font-semibold border transition-colors ${
+              agendaMineOnly
+                ? "bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-black dark:border-white"
+                : "bg-white text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
+            }`}
+          >
+            My events
+          </button>
+        )}
       </div>
 
       {error && <p className="mb-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-3 rounded">{error}</p>}
@@ -870,6 +893,7 @@ export default function CampDetailPage() {
           isAdmin={isAdmin}
           organizers={organizers}
           currentUserName={currentUserName}
+          agendaMineOnly={agendaMineOnly}
           onUpdate={() => { loadTracks(); loadActivities(); loadStandingEvents(); }}
           onOpenRoster={openRoster}
         />

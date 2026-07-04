@@ -18,6 +18,11 @@ type PopoverState =
   | { kind: "activity"; x: number; y: number; activity: ActivityWithCount }
   | { kind: "standing"; x: number; y: number; event: StandingEvent };
 
+type AgendaItem =
+  | { kind: "track"; start: number; end: number; track: TrackWithCount }
+  | { kind: "activity"; start: number; end: number; activity: ActivityWithCount }
+  | { kind: "standing"; start: number; end: number; event: StandingEvent };
+
 interface CampGridProps {
   tracks: TrackWithCount[];
   activities: ActivityWithCount[];
@@ -97,6 +102,11 @@ function dateForDay(day: string, startDate: string): string | null {
     }
   }
   return null;
+}
+
+function todayDayName(): string {
+  const DOW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  return DOW[new Date().getDay()];
 }
 
 const timeSlots: number[] = [];
@@ -858,6 +868,24 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
 
   const rainbowShadow = "0 0 0 1.5px #d93025, 0 0 0 3px #f5810e, 0 0 0 4.5px #f5c23e, 0 0 0 6px #5dbb46, 0 0 0 7.5px #4b96f3, 0 0 0 9px #7c3aed";
 
+  // Mobile agenda view — a flat chronological list for one day at a time,
+  // instead of the side-by-side columns the desktop grid uses (which shrink
+  // overlapping tracks/activities down to unreadable slivers on a phone).
+  const [agendaDay, setAgendaDay] = useState<string>(() => {
+    const today = todayDayName();
+    return days.includes(today) ? today : (days[0] ?? "Monday");
+  });
+
+  function agendaItemsForDay(day: string): AgendaItem[] {
+    const items: AgendaItem[] = [
+      ...tracks.map(t => ({ kind: "track" as const, start: timeToMins(t.start_time), end: timeToMins(t.end_time), track: t })),
+      ...activities.filter(a => parseDays(a.day).includes(day)).map(a => ({ kind: "activity" as const, start: timeToMins(a.start_time), end: timeToMins(a.end_time), activity: a })),
+      ...standingEvents.filter(e => parseDays(e.day).includes(day)).map(e => ({ kind: "standing" as const, start: timeToMins(e.start_time), end: timeToMins(e.end_time), event: e })),
+    ];
+    return items.sort((a, b) => a.start - b.start || a.end - b.end);
+  }
+  const agendaItems = agendaItemsForDay(agendaDay);
+
   // Auto-scroll to 8 AM on mount
   useEffect(() => {
     if (scrollRef.current) {
@@ -901,7 +929,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
     <div className="select-none">
       <div className="flex items-center justify-between mb-3 gap-4">
         <div>
-          {isAdmin && <p className="text-xs text-gray-400 dark:text-gray-500">Click any empty area to add an activity or track · Click a block to edit</p>}
+          {isAdmin && <p className="hidden sm:block text-xs text-gray-400 dark:text-gray-500">Click any empty area to add an activity or track · Click a block to edit</p>}
           {!isAdmin && <p className="text-xs text-amber-700 dark:text-amber-400">You have read-only access and cannot edit the schedule.</p>}
         </div>
         {focusDay && (
@@ -914,7 +942,93 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
         )}
       </div>
 
-      <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-x-auto">
+      {/* ── Mobile agenda view — one day at a time, flat chronological list ── */}
+      <div className="sm:hidden">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 mb-3 -mx-4 px-4">
+          {days.map(day => {
+            const date = dateForDay(day, campStartDate);
+            const active = agendaDay === day;
+            return (
+              <button
+                key={day}
+                type="button"
+                onClick={() => setAgendaDay(day)}
+                className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
+                  active
+                    ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white"
+                    : "bg-white text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
+                }`}
+              >
+                {day.slice(0, 3)}{date ? ` ${date}` : ""}
+              </button>
+            );
+          })}
+        </div>
+
+        {agendaItems.length === 0 ? (
+          <p className="text-sm text-gray-400 dark:text-gray-500 italic py-6 text-center">Nothing scheduled this day.</p>
+        ) : (
+          <div className="space-y-2">
+            {agendaItems.map(agendaItem => {
+              if (agendaItem.kind === "track") {
+                const t = agendaItem.track;
+                const isMine = !!(currentUserName && t.organizers?.includes(currentUserName));
+                const pct = Math.min(t.enrolled / t.capacity, 1);
+                const barColor = pct >= 1 ? "bg-red-500" : pct >= 0.8 ? "bg-yellow-500" : "bg-green-500";
+                return (
+                  <button key={`track-${t.id}`} type="button"
+                    onClick={e => setPopover({ kind: "track", x: e.clientX, y: e.clientY, track: t })}
+                    style={{ boxShadow: isMine ? rainbowShadow : undefined }}
+                    className="relative w-full text-left rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 px-3 py-2.5">
+                    {isMine && <span className="absolute top-2 right-2 text-xs bg-amber-400 text-amber-900 font-semibold px-1 rounded leading-tight">You</span>}
+                    <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">{t.emoji ? `${t.emoji} ` : ""}{t.name}</p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">{formatTime(t.start_time)} – {formatTime(t.end_time)}</p>
+                    {t.location && <p className="text-xs text-blue-700 dark:text-blue-300 opacity-75 mt-0.5">📍 {t.location}</p>}
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <div className="flex-1 max-w-24 h-1 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
+                        <div className={`h-full ${barColor} rounded-full`} style={{ width: `${pct * 100}%` }} />
+                      </div>
+                      <span className="text-xs text-blue-700 dark:text-blue-300 opacity-70">{t.enrolled}/{t.capacity}</span>
+                    </div>
+                  </button>
+                );
+              }
+              if (agendaItem.kind === "activity") {
+                const a = agendaItem.activity;
+                const isMine = !!(currentUserName && a.organizers?.includes(currentUserName));
+                return (
+                  <button key={`activity-${a.id}`} type="button"
+                    onClick={e => setPopover({ kind: "activity", x: e.clientX, y: e.clientY, activity: a })}
+                    style={{ boxShadow: isMine ? rainbowShadow : undefined }}
+                    className="relative w-full text-left rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/30 px-3 py-2.5">
+                    {isMine && <span className="absolute top-2 right-2 text-xs bg-amber-400 text-amber-900 font-semibold px-1 rounded leading-tight">You</span>}
+                    <p className="text-sm font-semibold text-purple-900 dark:text-purple-100">{a.emoji ? `${a.emoji} ` : ""}{a.name}</p>
+                    <p className="text-xs text-purple-700 dark:text-purple-300 mt-0.5">{formatTime(a.start_time)} – {formatTime(a.end_time)}</p>
+                    {a.location && <p className="text-xs text-purple-700 dark:text-purple-300 opacity-75 mt-0.5">📍 {a.location}</p>}
+                    <p className="text-xs text-purple-700 dark:text-purple-300 opacity-70 mt-1.5">{a.enrolled}/{a.capacity} enrolled</p>
+                  </button>
+                );
+              }
+              const ev = agendaItem.event;
+              const isMine = !!(currentUserName && ev.organizers?.includes(currentUserName));
+              return (
+                <button key={`standing-${ev.id}`} type="button"
+                  onClick={e => setPopover({ kind: "standing", x: e.clientX, y: e.clientY, event: ev })}
+                  style={{ boxShadow: isMine ? rainbowShadow : undefined }}
+                  className="relative w-full text-left rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/30 px-3 py-2.5">
+                  {isMine && <span className="absolute top-2 right-2 text-xs bg-amber-400 text-amber-900 font-semibold px-1 rounded leading-tight">You</span>}
+                  <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">{ev.emoji ? `${ev.emoji} ` : ""}{ev.name}</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">{formatTime(ev.start_time)} – {formatTime(ev.end_time)}</p>
+                  {ev.location && <p className="text-xs text-amber-700 dark:text-amber-300 opacity-75 mt-0.5">📍 {ev.location}</p>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Desktop grid view ── */}
+      <div className="hidden sm:block border border-gray-200 dark:border-gray-700 rounded-xl overflow-x-auto">
        <div style={{ minWidth: 64 + visibleDays.length * 112 }}>
 
         {/* Day column headers */}

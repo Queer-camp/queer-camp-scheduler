@@ -202,8 +202,21 @@ function MiniDayPicker({ value, onChange, availableDays }: { value: string; onCh
 function Popover({ x, y, onClose, children }: { x: number; y: number; onClose: () => void; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: x, top: y });
+  // Below the sm breakpoint this renders as a bottom sheet instead of a
+  // floating tooltip anchored to the tap position — a small fixed-width box
+  // stranded mid-screen doesn't read as "belongs to what I just tapped" on a
+  // phone the way a full-width sheet sliding up from the bottom does.
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches);
 
   useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile) return;
     if (!ref.current) return;
     const { width, height } = ref.current.getBoundingClientRect();
     const vw = window.innerWidth;
@@ -215,7 +228,7 @@ function Popover({ x, y, onClose, children }: { x: number; y: number; onClose: (
     if (top < 8) top = 8;
     if (left < 8) left = 8;
     setPos({ left, top });
-  }, [x, y]);
+  }, [x, y, isMobile]);
 
   useEffect(() => {
     function onDown(e: MouseEvent) {
@@ -226,6 +239,24 @@ function Popover({ x, y, onClose, children }: { x: number; y: number; onClose: (
     document.addEventListener("keydown", onKey);
     return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
   }, [onClose]);
+
+  if (isMobile) {
+    return (
+      <>
+        <div className="fixed inset-0 bg-black/40 z-50" onClick={onClose} />
+        <div
+          ref={ref}
+          style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
+          className="fixed inset-x-0 bottom-0 z-[51] bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl max-h-[85vh] overflow-y-auto"
+        >
+          <div className="flex justify-center pt-2 pb-1">
+            <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+          </div>
+          {children}
+        </div>
+      </>
+    );
+  }
 
   return (
     <div ref={ref} style={{ position: "fixed", left: pos.left, top: pos.top, zIndex: 60, width: POPOVER_WIDTH, maxWidth: "calc(100vw - 16px)" }}

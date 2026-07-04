@@ -708,9 +708,9 @@ function TrackPopover({
         </div>
 
         <div className="px-4 pb-4 flex items-center justify-between">
-          <div className="flex gap-4">
+          <div className="flex items-center gap-4">
             <button type="button" onClick={() => { onOpenRoster({ type: "track", id: track.id, name: track.name, capacity: track.capacity }); onClose(); }}
-              className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-medium py-2">Roster</button>
+              className="px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors">Roster</button>
             {isAdmin && <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline py-2">Delete</button>}
           </div>
           {isAdmin && <button type="submit" disabled={saving}
@@ -843,9 +843,9 @@ function ActivityPopover({
         </div>
 
         <div className="px-4 pb-4 flex items-center justify-between">
-          <div className="flex gap-4">
+          <div className="flex items-center gap-4">
             <button type="button" onClick={() => { onOpenRoster({ type: "activity", id: activity.id, name: activity.name, capacity: activity.capacity }); onClose(); }}
-              className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-medium py-2">Roster</button>
+              className="px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors">Roster</button>
             {isAdmin && <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline py-2">Delete</button>}
           </div>
           {isAdmin && <button type="submit" disabled={saving}

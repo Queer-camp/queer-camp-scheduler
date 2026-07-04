@@ -218,7 +218,7 @@ function Popover({ x, y, onClose, children }: { x: number; y: number; onClose: (
   }, [onClose]);
 
   return (
-    <div ref={ref} style={{ position: "fixed", left: pos.left, top: pos.top, zIndex: 60, width: POPOVER_WIDTH }}
+    <div ref={ref} style={{ position: "fixed", left: pos.left, top: pos.top, zIndex: 60, width: POPOVER_WIDTH, maxWidth: "calc(100vw - 16px)" }}
       className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden">
       {children}
     </div>
@@ -914,7 +914,8 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
         )}
       </div>
 
-      <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+      <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-x-auto">
+       <div style={{ minWidth: 64 + visibleDays.length * 112 }}>
 
         {/* Day column headers */}
         <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 sticky top-0 z-10">
@@ -1111,6 +1112,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
             })}
           </div>
         </div>
+       </div>
       </div>
 
       {/* Popovers */}

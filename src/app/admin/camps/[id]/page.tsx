@@ -195,22 +195,22 @@ function OrganizerPicker({ value, onChange, organizers }: { value: string[]; onC
 
 function TrackFormFields({ form, setForm, organizers }: { form: TrackForm; setForm: (f: TrackForm) => void; organizers: string[] }) {
   return (
-    <div className="grid grid-cols-2 gap-3">
-      <div className="col-span-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="sm:col-span-2">
         <label className="block text-sm font-medium mb-1">Name</label>
         <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Morning Track A" />
       </div>
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <label className="block text-sm font-medium mb-1">Location <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
         <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Room 4, Pavilion…" />
       </div>
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <label className="block text-sm font-medium mb-1">Organizer <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
         <OrganizerPicker value={form.organizers} onChange={v => setForm({ ...form, organizers: v })} organizers={organizers} />
       </div>
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <label className="block text-sm font-medium mb-1">Description <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
         <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" />
@@ -239,27 +239,27 @@ function TrackFormFields({ form, setForm, organizers }: { form: TrackForm; setFo
 
 function ActivityFormFields({ form, setForm, series, availableDays, organizers }: { form: ActivityForm; setForm: (f: ActivityForm) => void; series: ActivitySeries[]; availableDays: string[]; organizers: string[] }) {
   return (
-    <div className="grid grid-cols-2 gap-3">
-      <div className="col-span-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="sm:col-span-2">
         <label className="block text-sm font-medium mb-1">Name</label>
         <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Pottery" />
       </div>
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <label className="block text-sm font-medium mb-1">Location <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
         <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="Room 4, Pavilion…" />
       </div>
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <label className="block text-sm font-medium mb-1">Organizer <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
         <OrganizerPicker value={form.organizers} onChange={v => setForm({ ...form, organizers: v })} organizers={organizers} />
       </div>
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <label className="block text-sm font-medium mb-1">Description <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
         <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" />
       </div>
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <label className="block text-sm font-medium mb-1">Days</label>
         <DayPicker value={form.day} onChange={day => setForm({ ...form, day })} availableDays={availableDays} />
       </div>
@@ -281,7 +281,7 @@ function ActivityFormFields({ form, setForm, series, availableDays, organizers }
         <input value={form.emoji} onChange={e => setForm({ ...form, emoji: e.target.value })}
           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500" placeholder="🏺" />
       </div>
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <label className="block text-sm font-medium mb-1">Series <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span></label>
         <select value={form.series_id} onChange={e => setForm({ ...form, series_id: e.target.value })}
           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-800 dark:text-gray-100">
@@ -338,7 +338,7 @@ function StandingFormFields({ form, setForm, availableDays, organizers }: { form
         <label className="block text-sm font-medium mb-1">Days</label>
         <DayPicker value={form.day} onChange={day => setForm({ ...form, day })} availableDays={availableDays} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium mb-1">Start time</label>
           <TimePicker value={form.start_time} onChange={v => setForm({ ...form, start_time: v })} required />

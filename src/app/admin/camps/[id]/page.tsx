@@ -967,16 +967,16 @@ export default function CampDetailPage() {
                   </>
                 )}
               </div>
-              <div className="ml-4 flex items-center gap-3 shrink-0">
+              <div className="ml-4 flex items-center gap-2 shrink-0">
                 <a
                   href={`/print/${rosterTarget.type}/${rosterTarget.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-medium"
+                  className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-medium py-2 px-2"
                 >
                   Print roster
                 </a>
-                <button onClick={closeRoster} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl leading-none">✕</button>
+                <button onClick={closeRoster} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl leading-none p-2 -m-2">✕</button>
               </div>
             </div>
 

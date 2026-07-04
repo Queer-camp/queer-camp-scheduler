@@ -104,9 +104,14 @@ function dateForDay(day: string, startDate: string): string | null {
   return null;
 }
 
-function todayDayName(): string {
-  const DOW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  return DOW[new Date().getDay()];
+// Picks today if today's actual calendar date falls within the camp, otherwise
+// the first camp day — matched by real date, not just weekday name, so a
+// same-named weekday outside the camp's date range doesn't false-match.
+function defaultAgendaDay(days: string[], campStartDate: string): string {
+  if (days.length === 0) return "Monday";
+  const now = new Date();
+  const todayLabel = `${now.getMonth() + 1}/${now.getDate()}`;
+  return days.find(d => dateForDay(d, campStartDate) === todayLabel) ?? days[0];
 }
 
 const timeSlots: number[] = [];
@@ -208,6 +213,48 @@ function Popover({ x, y, onClose, children }: { x: number; y: number; onClose: (
   // phone the way a full-width sheet sliding up from the bottom does.
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches);
 
+  // Drag handle: swipe up expands the sheet to full screen, swipe down
+  // shrinks it back (or dismisses it if already at the default height).
+  const [sheetState, setSheetState] = useState<"default" | "full">("default");
+  const [dragY, setDragY] = useState(0);
+  const draggingRef = useRef(false);
+  // Mirrors draggingRef for render use only — refs can't be read during
+  // render, but the drag-in-progress flag needs to disable the CSS
+  // transition while live-tracking the finger.
+  const [isDragging, setIsDragging] = useState(false);
+  const startYRef = useRef(0);
+  const startStateRef = useRef<"default" | "full">("default");
+
+  function onHandlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    draggingRef.current = true;
+    setIsDragging(true);
+    startYRef.current = e.clientY;
+    startStateRef.current = sheetState;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function onHandlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!draggingRef.current) return;
+    const delta = e.clientY - startYRef.current;
+    if (startStateRef.current === "default" && delta < -20) {
+      draggingRef.current = false;
+      setIsDragging(false);
+      setSheetState("full");
+      setDragY(0);
+      return;
+    }
+    setDragY(Math.max(0, delta));
+  }
+  function onHandlePointerUp() {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    setIsDragging(false);
+    if (dragY > 80) {
+      if (startStateRef.current === "full") setSheetState("default");
+      else { onClose(); return; }
+    }
+    setDragY(0);
+  }
+
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 639px)");
     const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
@@ -246,11 +293,22 @@ function Popover({ x, y, onClose, children }: { x: number; y: number; onClose: (
         <div className="fixed inset-0 bg-black/40 z-50" onClick={onClose} />
         <div
           ref={ref}
-          style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
-          className="fixed inset-x-0 bottom-0 z-[51] bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl max-h-[85vh] overflow-y-auto"
+          style={{
+            ...(sheetState === "full" ? { top: 0, height: "100dvh" } : { maxHeight: "85vh" }),
+            transform: dragY ? `translateY(${dragY}px)` : undefined,
+            transition: isDragging ? "none" : "transform 0.2s ease-out",
+            paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
+          }}
+          className={`fixed inset-x-0 bottom-0 z-[51] bg-white dark:bg-gray-900 shadow-2xl overflow-y-auto ${sheetState === "full" ? "rounded-t-none" : "rounded-t-2xl"}`}
         >
-          <div className="flex justify-center pt-2 pb-1">
-            <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+          <div
+            onPointerDown={onHandlePointerDown}
+            onPointerMove={onHandlePointerMove}
+            onPointerUp={onHandlePointerUp}
+            onPointerCancel={onHandlePointerUp}
+            className="flex justify-center pt-3 pb-3 -mt-1 touch-none cursor-grab active:cursor-grabbing"
+          >
+            <div className="w-12 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600" />
           </div>
           {children}
         </div>
@@ -418,7 +476,7 @@ function CreatePopover({
                 </button>
               ))}
             </div>
-            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none ml-2">✕</button>
+            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none p-2 -m-2">✕</button>
           </div>
           <div className="flex gap-2">
             <input value={form.emoji} onChange={e => set("emoji", e.target.value)} placeholder="✦"
@@ -579,7 +637,7 @@ function TrackPopover({
         <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">Track</span>
-            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none">✕</button>
+            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none p-2 -m-2">✕</button>
           </div>
           <div className="flex gap-2 mb-2">
             <input value={form.emoji} onChange={e => set("emoji", e.target.value)} placeholder="✦"
@@ -629,12 +687,12 @@ function TrackPopover({
         </div>
 
         <div className="px-4 pb-4 flex items-center justify-between">
-          <div className="flex gap-3">
+          <div className="flex gap-4">
             {canViewRoster && (
               <button type="button" onClick={() => { onOpenRoster({ type: "track", id: track.id, name: track.name, capacity: track.capacity }); onClose(); }}
-                className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-medium">Roster</button>
+                className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-medium py-2">Roster</button>
             )}
-            {isAdmin && <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline">Delete</button>}
+            {isAdmin && <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline py-2">Delete</button>}
           </div>
           {isAdmin && <button type="submit" disabled={saving}
             className="px-4 py-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 transition-colors">
@@ -697,7 +755,7 @@ function ActivityPopover({
         <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-purple-600 dark:text-purple-400">Activity</span>
-            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none">✕</button>
+            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none p-2 -m-2">✕</button>
           </div>
           <div className="flex gap-2 mb-2">
             <input value={form.emoji} onChange={e => set("emoji", e.target.value)} placeholder="✦"
@@ -767,12 +825,12 @@ function ActivityPopover({
         </div>
 
         <div className="px-4 pb-4 flex items-center justify-between">
-          <div className="flex gap-3">
+          <div className="flex gap-4">
             {canViewRoster && (
               <button type="button" onClick={() => { onOpenRoster({ type: "activity", id: activity.id, name: activity.name, capacity: activity.capacity }); onClose(); }}
-                className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-medium">Roster</button>
+                className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-medium py-2">Roster</button>
             )}
-            {isAdmin && <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline">Delete</button>}
+            {isAdmin && <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline py-2">Delete</button>}
           </div>
           {isAdmin && <button type="submit" disabled={saving}
             className="px-4 py-1.5 text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white rounded-lg disabled:opacity-50 transition-colors">
@@ -830,7 +888,7 @@ function StandingEventPopover({
         <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">Standing Event</span>
-            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none">✕</button>
+            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg leading-none p-2 -m-2">✕</button>
           </div>
           <div className="flex gap-2">
             <input value={form.emoji} onChange={e => set("emoji", e.target.value)} placeholder="🍽️"
@@ -869,7 +927,7 @@ function StandingEventPopover({
         </div>
 
         <div className="px-4 pb-4 flex items-center justify-between">
-          {isAdmin && <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline">Delete</button>}
+          {isAdmin && <button type="button" onClick={del} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 hover:underline py-2">Delete</button>}
           {isAdmin ? (
             <button type="submit" disabled={saving}
               className="px-4 py-1.5 text-sm font-medium bg-amber-500 hover:bg-amber-600 text-white rounded-lg disabled:opacity-50 transition-colors">
@@ -902,10 +960,13 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
   // Mobile agenda view — a flat chronological list for one day at a time,
   // instead of the side-by-side columns the desktop grid uses (which shrink
   // overlapping tracks/activities down to unreadable slivers on a phone).
-  const [agendaDay, setAgendaDay] = useState<string>(() => {
-    const today = todayDayName();
-    return days.includes(today) ? today : (days[0] ?? "Monday");
-  });
+  const [agendaDay, setAgendaDay] = useState<string>(() => defaultAgendaDay(days, campStartDate));
+  const [agendaMineOnly, setAgendaMineOnly] = useState(false);
+
+  function agendaItemIsMine(item: AgendaItem): boolean {
+    const organizers = item.kind === "track" ? item.track.organizers : item.kind === "activity" ? item.activity.organizers : item.event.organizers;
+    return !!(currentUserName && organizers?.includes(currentUserName));
+  }
 
   function agendaItemsForDay(day: string): AgendaItem[] {
     const items: AgendaItem[] = [
@@ -915,7 +976,9 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
     ];
     return items.sort((a, b) => a.start - b.start || a.end - b.end);
   }
-  const agendaItems = agendaItemsForDay(agendaDay);
+  const agendaItemsAll = agendaItemsForDay(agendaDay);
+  const agendaItems = agendaMineOnly ? agendaItemsAll.filter(agendaItemIsMine) : agendaItemsAll;
+  const hasAnyAssignments = !!(currentUserName && [...tracks, ...activities, ...standingEvents].some(i => i.organizers?.includes(currentUserName)));
 
   // Auto-scroll to 8 AM on mount
   useEffect(() => {
@@ -984,7 +1047,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                 key={day}
                 type="button"
                 onClick={() => setAgendaDay(day)}
-                className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
+                className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-medium border transition-colors ${
                   active
                     ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white"
                     : "bg-white text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
@@ -996,14 +1059,43 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
           })}
         </div>
 
+        {hasAnyAssignments && (
+          <div className="flex gap-1.5 mb-3">
+            <button
+              type="button"
+              onClick={() => setAgendaMineOnly(false)}
+              className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold border transition-colors ${
+                !agendaMineOnly
+                  ? "bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-black dark:border-white"
+                  : "bg-white text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
+              }`}
+            >
+              All events
+            </button>
+            <button
+              type="button"
+              onClick={() => setAgendaMineOnly(true)}
+              className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold border transition-colors ${
+                agendaMineOnly
+                  ? "bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-black dark:border-white"
+                  : "bg-white text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
+              }`}
+            >
+              My events
+            </button>
+          </div>
+        )}
+
         {agendaItems.length === 0 ? (
-          <p className="text-sm text-gray-400 dark:text-gray-500 italic py-6 text-center">Nothing scheduled this day.</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 italic py-6 text-center">
+            {agendaMineOnly ? "You have nothing scheduled this day." : "Nothing scheduled this day."}
+          </p>
         ) : (
           <div className="space-y-2">
             {agendaItems.map(agendaItem => {
               if (agendaItem.kind === "track") {
                 const t = agendaItem.track;
-                const isMine = !!(currentUserName && t.organizers?.includes(currentUserName));
+                const isMine = agendaItemIsMine(agendaItem);
                 const pct = Math.min(t.enrolled / t.capacity, 1);
                 const barColor = pct >= 1 ? "bg-red-500" : pct >= 0.8 ? "bg-yellow-500" : "bg-green-500";
                 return (
@@ -1026,7 +1118,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
               }
               if (agendaItem.kind === "activity") {
                 const a = agendaItem.activity;
-                const isMine = !!(currentUserName && a.organizers?.includes(currentUserName));
+                const isMine = agendaItemIsMine(agendaItem);
                 return (
                   <button key={`activity-${a.id}`} type="button"
                     onClick={e => setPopover({ kind: "activity", x: e.clientX, y: e.clientY, activity: a })}
@@ -1041,7 +1133,7 @@ export function CampGrid({ tracks, activities, series, standingEvents, available
                 );
               }
               const ev = agendaItem.event;
-              const isMine = !!(currentUserName && ev.organizers?.includes(currentUserName));
+              const isMine = agendaItemIsMine(agendaItem);
               return (
                 <button key={`standing-${ev.id}`} type="button"
                   onClick={e => setPopover({ kind: "standing", x: e.clientX, y: e.clientY, event: ev })}
